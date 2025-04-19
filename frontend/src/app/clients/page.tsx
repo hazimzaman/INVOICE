@@ -6,8 +6,9 @@ import AddClientModal from '@/components/clients/AddClientModal';
 import { Client } from '@/types/client';
 import { useAppDispatch } from '@/store/hooks';
 import { addClient } from '@/store/slices/clientsSlice';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-export default function ClientsPage() {
+export default function Page() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const dispatch = useAppDispatch();
 
@@ -23,7 +24,7 @@ export default function ClientsPage() {
   };
 
   return (
-    <>
+    <ProtectedRoute>
       <ClientsTable 
         onAddClick={() => setIsAddModalOpen(true)} 
       />
@@ -32,6 +33,6 @@ export default function ClientsPage() {
         onClose={() => setIsAddModalOpen(false)}
         onAddClient={handleAddClient}
       />
-    </>
+    </ProtectedRoute>
   );
 } 
