@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FiX, FiPlus, FiTrash } from 'react-icons/fi';
 import { Client } from '@/types/client';
 import { Invoice, InvoiceItem } from '@/types/invoice';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector } from '@/store/hooks';
 
 interface AddInvoiceModalProps {
   isOpen: boolean;

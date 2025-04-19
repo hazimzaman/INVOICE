@@ -1,16 +1,88 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { updateEmailSettings } from '@/redux/features/settingsSlice';
-import { showNotification } from '@/redux/features/notificationSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { updateEmailSettings } from '@/store/slices/settingsSlice';
+import { showNotification } from '@/store/slices/notificationSlice';
 
 export default function EmailSettingsForm() {
   const dispatch = useAppDispatch();
   const emailSettings = useAppSelector((state) => state.settings.email);
 
+  const defaultEmailTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .email-container {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .invoice-details {
+      background-color: #ffffff;
+      border: 1px solid #e9ecef;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .amount {
+      font-size: 24px;
+      color: #2563eb;
+      font-weight: bold;
+    }
+    .footer {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e9ecef;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <h2>Invoice from {businessName}</h2>
+    </div>
+    
+    <p>Dear {clientName},</p>
+    
+    <p>I hope this email finds you well. Please find attached the invoice #{invoiceNumber}.</p>
+    
+    <div class="invoice-details">
+      <h3>Invoice Details:</h3>
+      <p><strong>Invoice Number:</strong> #{invoiceNumber}</p>
+      <p><strong>Amount:</strong> <span class="amount">{amount}</span></p>
+      <p><strong>Due Date:</strong> {dueDate}</p>
+    </div>
+    
+    <p><strong>Payment Instructions:</strong></p>
+    <ul>
+      <li>Bank Transfer to the WISE account mentioned in the invoice</li>
+      <li>Please include invoice number as reference</li>
+    </ul>
+    
+    <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+    
+    <p>Thank you for your business!</p>
+    
+    <div class="footer">
+      <p>Best regards,<br>{businessName}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
   const [formData, setFormData] = useState({
-    defaultEmailContent: emailSettings.defaultEmailContent || '',
+    defaultEmailContent: defaultEmailTemplate,
   });
 
   const [isSaving, setIsSaving] = useState(false);

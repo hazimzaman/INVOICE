@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { updateContactInfo } from '@/redux/features/settingsSlice';
-import { showNotification } from '@/redux/features/notificationSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { updateContactInfo } from '@/store/slices/settingsSlice';
+import { showNotification } from '@/store/slices/notificationSlice';
 
 export default function ContactForm() {
   const dispatch = useAppDispatch();

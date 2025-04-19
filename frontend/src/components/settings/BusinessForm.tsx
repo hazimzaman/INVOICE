@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { FiUpload, FiX } from 'react-icons/fi';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { updateBusinessInfo } from '@/redux/features/settingsSlice';
-import { showNotification } from '@/redux/features/notificationSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { updateBusinessInfo } from '@/store/slices/settingsSlice';
+import { showNotification } from '@/store/slices/notificationSlice';
 
 export default function BusinessForm() {
   const dispatch = useAppDispatch();

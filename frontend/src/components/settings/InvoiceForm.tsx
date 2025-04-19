@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { updateInvoiceSettings } from '@/redux/features/settingsSlice';
-import { showNotification } from '@/redux/features/notificationSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { updateInvoiceSettings } from '@/store/slices/settingsSlice';
+import { showNotification } from '@/store/slices/notificationSlice';
 
 export default function InvoiceForm() {
   const dispatch = useAppDispatch();
@@ -12,10 +12,10 @@ export default function InvoiceForm() {
   const [formData, setFormData] = useState({
     invoiceNumberPrefix: invoiceSettings.invoiceNumberPrefix || '',
     footerNote: invoiceSettings.footerNote || '',
+    currentInvoiceNumber: invoiceSettings.currentInvoiceNumber || 1,
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const currentInvoiceNumber = 3; // This should come from your invoice state/counter
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -31,10 +31,14 @@ export default function InvoiceForm() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      const nextNumber = parseInt(formData.currentInvoiceNumber.toString(), 10);
+      
       dispatch(updateInvoiceSettings({
         ...invoiceSettings,
         ...formData,
+        currentInvoiceNumber: nextNumber
       }));
+      
       dispatch(showNotification({
         message: 'Invoice settings saved successfully!',
         type: 'success'
@@ -71,17 +75,16 @@ export default function InvoiceForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Current Invoice Number <span className="text-gray-500">(Next invoice will be {currentInvoiceNumber + 1})</span>
+              Next Invoice Number
             </label>
             <input
-              type="text"
-              value={currentInvoiceNumber}
-              className="w-full p-2 border border-gray-200 rounded-lg bg-gray-50"
-              disabled
+              type="number"
+              name="currentInvoiceNumber"
+              value={formData.currentInvoiceNumber}
+              onChange={handleChange}
+              min="1"
+              className="w-full p-2 border border-gray-200 rounded-lg"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              Next invoice will automatically use {currentInvoiceNumber + 1}
-            </p>
           </div>
         </div>
 

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { FiEdit2, FiTrash2, FiSearch, FiPlus } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiSearch, FiPlus, FiEye } from 'react-icons/fi';
 import { Client } from '@/types/client';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { removeClient, updateClient } from '@/redux/features/clientsSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { removeClient, updateClient } from '@/store/slices/clientsSlice';
 import EditClientModal from './EditClientModal';
+import ViewClientModal from './ViewClientModal';
 
 interface ClientsTableProps {
   onAddClick: () => void;
@@ -15,6 +16,8 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const dispatch = useAppDispatch();
   const clients = useAppSelector(state => state.clients.clients);
 
@@ -103,6 +106,15 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-3">
                         <button 
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setIsViewModalOpen(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 mr-3"
+                        >
+                          <FiEye className="text-xl" />
+                        </button>
+                        <button 
                           onClick={() => handleEdit(client)}
                           className="text-gray-600 hover:text-blue-600"
                         >
@@ -158,6 +170,17 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedClient && (
+        <ViewClientModal
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedClient(null);
+          }}
+          client={selectedClient}
+        />
       )}
     </>
   );

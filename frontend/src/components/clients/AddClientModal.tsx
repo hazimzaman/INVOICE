@@ -27,6 +27,9 @@ export default function AddClientModal({ isOpen, onClose, onAddClient }: AddClie
       name: formData.name,
       company: formData.company,
       currency: formData.currency,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address
     });
 
     // Reset form
@@ -82,13 +85,15 @@ export default function AddClientModal({ isOpen, onClose, onAddClient }: AddClie
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Email*
             </label>
             <input
+              required
               type="email"
-              className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              name="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

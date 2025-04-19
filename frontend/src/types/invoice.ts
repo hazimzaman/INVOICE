@@ -10,10 +10,10 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  client: Client;
-  items: InvoiceItem[];
   date: string;
   dueDate: string;
-  status: 'paid' | 'pending' | 'overdue';
+  client: Client;
+  items: InvoiceItem[];
   total: number;
+  status: 'pending' | 'paid';
 } 

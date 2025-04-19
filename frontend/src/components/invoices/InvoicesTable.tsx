@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { FiEdit2, FiTrash2, FiSearch, FiPlus, FiEye, FiMail, FiDownload } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { removeInvoice } from '@/redux/features/invoicesSlice';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { removeInvoice } from '@/store/slices/invoicesSlice';
 
 interface InvoicesTableProps {
   onAddClick: () => void;

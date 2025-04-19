@@ -4,8 +4,8 @@ import { useState } from 'react';
 import ClientsTable from '@/components/clients/ClientsTable';
 import AddClientModal from '@/components/clients/AddClientModal';
 import { Client } from '@/types/client';
-import { useAppDispatch } from '@/redux/hooks';
-import { addClient } from '@/redux/features/clientsSlice';
+import { useAppDispatch } from '@/store/hooks';
+import { addClient } from '@/store/slices/clientsSlice';
 
 export default function ClientsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

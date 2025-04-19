@@ -6,8 +6,9 @@ import AddInvoiceModal from '@/components/invoices/AddInvoiceModal';
 import ViewInvoiceModal from '@/components/invoices/ViewInvoiceModal';
 import EditInvoiceModal from '@/components/invoices/EditInvoiceModal';
 import { Invoice } from '@/types/invoice';
-import { useAppDispatch } from '@/redux/hooks';
-import { addInvoice, updateInvoice } from '@/redux/features/invoicesSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { addInvoice, updateInvoice } from '@/store/slices/invoicesSlice';
+import { updateInvoiceSettings } from '@/store/slices/settingsSlice';
 
 export default function InvoicesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -15,15 +16,25 @@ export default function InvoicesPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const dispatch = useAppDispatch();
+  const { invoice: invoiceSettings } = useAppSelector((state) => state.settings);
 
   const handleAddInvoice = (invoiceData: Omit<Invoice, 'id' | 'status'>) => {
+    const currentNumber = invoiceSettings.currentInvoiceNumber;
+    
     const newInvoice: Invoice = {
       ...invoiceData,
       id: crypto.randomUUID(),
+      invoiceNumber: `${invoiceSettings.invoiceNumberPrefix}${String(currentNumber).padStart(3, '0')}`,
       status: 'pending'
     };
 
     dispatch(addInvoice(newInvoice));
+    
+    // Increment the number for the next invoice
+    dispatch(updateInvoiceSettings({
+      ...invoiceSettings,
+      currentInvoiceNumber: currentNumber + 1
+    }));
   };
 
   const handleViewInvoice = (invoice: Invoice) => {
