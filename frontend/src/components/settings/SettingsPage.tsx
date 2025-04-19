@@ -19,7 +19,46 @@ export default function SettingsPage() {
         {/* Tabs */}
         <div className="col-span-3">
           <div className="space-y-2">
-            {/* Copy the rest of your original settings/page.tsx content here */}
+            <button
+              onClick={() => setActiveTab('business')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'business'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Business Information
+            </button>
+            <button
+              onClick={() => setActiveTab('contact')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'contact'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Contact Information
+            </button>
+            <button
+              onClick={() => setActiveTab('invoice')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'invoice'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Invoice Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('email')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'email'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Email Settings
+            </button>
           </div>
         </div>
 

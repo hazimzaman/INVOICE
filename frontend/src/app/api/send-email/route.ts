@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     };
 
     const info = await transporter.sendMail(mailOptions) as SentMessageInfo;
+    console.log('Email sent successfully:', info.messageId);
     
     return NextResponse.json({ 
       success: true, 
@@ -53,7 +54,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Email error:', error);
     return NextResponse.json(
-      { error: 'Failed to send email', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to send email', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
