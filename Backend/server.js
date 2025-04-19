@@ -184,6 +184,227 @@ app.post('/api/test-smtp', async (req, res) => {
   }
 });
 
+// Request password reset
+app.post('/api/request-password-reset', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    console.log('Received reset request for:', { email, name });
+
+    // First check unverified_users to ensure user is verified
+    const { data: userData, error: userError } = await supabase
+      .from('unverified_users')
+      .select('*')
+      .eq('email', email)
+      .eq('name', name)
+      .eq('verified', true)
+      .single();
+
+    if (userError || !userData) {
+      console.log('User not found or not verified');
+      return res.json({ success: true }); // Security through obscurity
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Store reset token in Supabase
+    const { error: tokenError } = await supabase
+      .from('password_reset_tokens')
+      .insert({
+        user_id: userData.id,
+        token: resetToken,
+        expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour expiry
+      });
+
+    if (tokenError) {
+      console.error('Token storage error:', tokenError);
+      throw tokenError;
+    }
+
+    // Send reset email using our SMTP
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: email,
+      subject: 'Reset Your Password - InvoiceApp',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563EB; margin-bottom: 24px;">Reset Your Password</h1>
+          
+          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
+            Hi ${name},
+          </p>
+          
+          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
+            We received a request to reset your password. Click the button below to set a new password:
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" 
+               style="background-color: #2563EB; 
+                      color: white; 
+                      padding: 12px 24px; 
+                      text-decoration: none; 
+                      border-radius: 6px; 
+                      font-weight: bold;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">
+            If you didn't request this password reset, you can safely ignore this email.
+            The link will expire in 1 hour.
+          </p>
+        </div>
+      `
+    });
+
+    console.log('Reset email sent successfully');
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process password reset request',
+      details: error.message 
+    });
+  }
+});
+
+// Reset password
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Get reset token and user data
+    const { data: resetData, error: resetError } = await supabase
+      .from('password_reset_tokens')
+      .select('user_id, expires_at')
+      .eq('token', token)
+      .single();
+
+    if (resetError || !resetData) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (new Date(resetData.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Reset token has expired' });
+    }
+
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from('unverified_users')
+      .select('*')
+      .eq('id', resetData.user_id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Update password in unverified_users table
+    const { error: updateError } = await supabase
+      .from('unverified_users')
+      .update({ password: newPassword })
+      .eq('id', resetData.user_id);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to update password' });
+    }
+
+    // Try to create/update auth user
+    try {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: newPassword,
+        options: {
+          data: { name: userData.name }
+        }
+      });
+
+      if (signUpError && !signUpError.message.includes('User already registered')) {
+        throw signUpError;
+      }
+    } catch (error) {
+      console.error('Auth operation error:', error);
+      // Continue since we've updated the password in unverified_users
+    }
+
+    // Delete used token
+    await supabase
+      .from('password_reset_tokens')
+      .delete()
+      .eq('token', token);
+
+    res.json({ 
+      success: true,
+      message: 'Password reset successful. Please login with your new password.'
+    });
+
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reset password',
+      details: error.message 
+    });
+  }
+});
+
+// Verify email endpoint
+app.post('/api/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    // Get user data from unverified_users
+    const { data: userData, error: fetchError } = await supabase
+      .from('unverified_users')
+      .select('*')
+      .eq('verification_token', token)
+      .eq('verified', false)
+      .single();
+
+    if (fetchError || !userData) {
+      throw new Error('Invalid or expired verification token');
+    }
+
+    // Create auth user in Supabase
+    const { data: authData, error: signupError } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          name: userData.name
+        }
+      }
+    });
+
+    if (signupError) {
+      throw new Error('Failed to create auth account');
+    }
+
+    // Update unverified_users record
+    const { error: updateError } = await supabase
+      .from('unverified_users')
+      .update({ verified: true })
+      .eq('verification_token', token);
+
+    if (updateError) {
+      throw new Error('Failed to verify email');
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Email verified successfully. Please login.'
+    });
+
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to verify email',
+      details: error.message 
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
