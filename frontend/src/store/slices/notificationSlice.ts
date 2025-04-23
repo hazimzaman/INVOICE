@@ -2,32 +2,28 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface NotificationState {
   message: string | null;
-  type: 'success' | 'error' | null;
-  isVisible: boolean;
+  type: 'success' | 'error' | 'info' | null;
 }
 
 const initialState: NotificationState = {
   message: null,
-  type: null,
-  isVisible: false,
+  type: null
 };
 
 const notificationSlice = createSlice({
   name: 'notification',
   initialState,
   reducers: {
-    showNotification: (state, action: PayloadAction<{ message: string; type: 'success' | 'error' }>) => {
+    showNotification: (state, action: PayloadAction<{ message: string; type: 'success' | 'error' | 'info' }>) => {
       state.message = action.payload.message;
       state.type = action.payload.type;
-      state.isVisible = true;
     },
-    hideNotification: (state) => {
+    clearNotification: (state) => {
       state.message = null;
       state.type = null;
-      state.isVisible = false;
-    },
-  },
+    }
+  }
 });
 
-export const { showNotification, hideNotification } = notificationSlice.actions;
+export const { showNotification, clearNotification } = notificationSlice.actions;
 export default notificationSlice.reducer; 

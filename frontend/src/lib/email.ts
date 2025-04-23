@@ -1,6 +1,6 @@
 interface EmailAttachment {
   filename: string;
-  content: string; // Base64 string
+  content: string;
 }
 
 export async function sendEmail({ 
@@ -8,24 +8,17 @@ export async function sendEmail({
   subject, 
   body, 
   attachments 
-}: {
-  to: string;
-  subject: string;
-  body: string;
+}: { 
+  to: string; 
+  subject: string; 
+  body: string; 
   attachments?: EmailAttachment[];
 }) {
   try {
     const response = await fetch('/api/send-email', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        to, 
-        subject, 
-        body, 
-        attachments 
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, body, attachments }),
     });
 
     if (!response.ok) {

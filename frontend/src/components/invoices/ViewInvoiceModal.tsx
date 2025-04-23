@@ -1,14 +1,12 @@
-'use client';
-
-import { FiX, FiDownload, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { Dialog } from '@headlessui/react';
+import { FiX, FiDownload, FiMail } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { generateInvoicePdf } from '@/utils/generateInvoicePdf';
+import { formatDate } from '@/utils/dateFormat';
+import { generateInvoicePDF } from './InvoicePDFTemplate';
+import { toast } from 'react-hot-toast';
+import { useAppSelector } from '@/store/hooks';
+import { sendEmail } from '@/lib/email';
 import { useState } from 'react';
-import { sendEmail } from '@/services/emailService';
-import { parseEmailTemplate } from '@/utils/emailTemplate';
-import { showNotification } from '@/store/slices/notificationSlice';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface ViewInvoiceModalProps {
   isOpen: boolean;
@@ -17,225 +15,233 @@ interface ViewInvoiceModalProps {
 }
 
 export default function ViewInvoiceModal({ isOpen, onClose, invoice }: ViewInvoiceModalProps) {
-  const [isSending, setIsSending] = useState(false);
-  const { business, contact, email: emailSettings } = useAppSelector((state) => state.settings);
-  const dispatch = useAppDispatch();
+  const { data: settings } = useAppSelector((state) => state.settings);
+  const [sending, setSending] = useState(false);
+  
+  const replaceTemplateVariables = (template: string) => {
+    const replacements = {
+      '{{client_name}}': invoice.client?.name || '',
+      '{{invoice_number}}': invoice.invoice_number,
+      '{{total_amount}}': `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
+      '{{due_date}}': formatDate(invoice.due_date),
+      '{{payment_details}}': settings?.wise_email || '',
+      '{{business_name}}': settings?.business_name || '',
+      '{{contact_email}}': settings?.contact_email || ''
+    };
 
-  const handleDownload = () => {
-    const doc = generateInvoicePdf(invoice, {
-      name: business.name,
-      logo: business.logo,
-      address: business.address,
-      contactPhone: contact.contactPhone,
-      wiseEmail: contact.wiseEmail
-    });
+    let emailContent = template;
+    
+    // Default template if none provided
+    if (!template) {
+      emailContent = `Dear {{client_name}},
 
-    // Download the PDF
-    doc.save(`invoice-${invoice.invoiceNumber}.pdf`);
+I hope this email finds you well. Please find attached invoice {{invoice_number}} for {{total_amount}}.
+
+Payment Details:
+- Invoice Number: {{invoice_number}}
+- Due Date: {{due_date}}
+- Amount Due: {{total_amount}}
+
+If you have any questions, please don't hesitate to contact me.
+Contact Email: {{contact_email}}
+
+Best regards,
+{{business_name}}`;
+    }
+
+    // Replace all variables without spaces
+    const htmlContent = Object.entries(replacements).reduce((text, [key, value]) => {
+      return text.replace(new RegExp(key.replace(/\s+/g, ''), 'g'), value);
+    }, emailContent);
+
+    // Convert line breaks to HTML breaks for proper email formatting
+    return htmlContent.replace(/\n/g, '<br>');
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      // Ensure invoice has settings data
+      const invoiceWithSettings = {
+        ...invoice,
+        settings: invoice.settings || settings || undefined
+      };
+      
+      const pdfBytes = await generateInvoicePDF(invoiceWithSettings);
+      
+      // Create blob and download
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${invoice.invoice_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Invoice PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
   };
 
   const handleSendEmail = async () => {
-    if (!invoice.client.email) {
-      dispatch(showNotification({
-        message: 'Client email is missing. Please update client information with an email address.',
-        type: 'error'
-      }));
-      return;
-    }
     try {
-      setIsSending(true);
+      setSending(true);
+
+      if (!invoice.client?.email) {
+        throw new Error('Client email is required');
+      }
 
       // Generate PDF
-      const doc = generateInvoicePdf(invoice, {
-        name: business.name,
-        logo: business.logo,
-        address: business.address,
-        contactPhone: contact.contactPhone,
-        wiseEmail: contact.wiseEmail
+      const pdfBytes = await generateInvoicePDF({
+        ...invoice,
+        settings: invoice.settings || settings || undefined
       });
 
-      // Parse email template
-      const emailBody = parseEmailTemplate(emailSettings.defaultEmailContent, {
-        clientName: invoice.client.name,
-        invoiceNumber: invoice.invoiceNumber,
-        amount: `${invoice.client.currency} ${invoice.total.toFixed(2)}`,
-        dueDate: invoice.dueDate,
-        businessName: business.name
-      });
+      // Prepare email content
+      const emailBody = replaceTemplateVariables(settings?.email_template || '');
+      const emailSubject = replaceTemplateVariables('Invoice {{invoice_number}} from {{business_name}}');
 
-      // Convert PDF to base64
-      const pdfBlob = doc.output('blob');
-      const base64pdf = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(pdfBlob);
-      });
-
-      // Send email
+      // Send email with PDF attachment
       await sendEmail({
         to: invoice.client.email,
-        subject: `Invoice #${invoice.invoiceNumber} from ${business.name}`,
+        subject: emailSubject,
         body: emailBody,
         attachments: [{
-          filename: `invoice-${invoice.invoiceNumber}.pdf`,
-          content: base64pdf.split(',')[1] // Remove data URL prefix
+          filename: `invoice-${invoice.invoice_number}.pdf`,
+          content: Buffer.from(pdfBytes).toString('base64')
         }]
       });
 
-      dispatch(showNotification({
-        message: 'Email sent successfully!',
-        type: 'success'
-      }));
+      toast.success('Invoice sent successfully');
     } catch (error) {
-      dispatch(showNotification({
-        message: 'Failed to send email',
-        type: 'error'
-      }));
+      console.error('Failed to send invoice:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
     } finally {
-      setIsSending(false);
+      setSending(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 transition-all duration-300">
-      <div className="bg-white rounded-lg w-full max-w-[800px] p-8 shadow-xl transform transition-all duration-300 scale-100 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Invoice #{invoice.invoiceNumber}</h2>
-            <p className="text-gray-500 mt-1">Created on {invoice.date}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleDownload}
-              className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg"
-            >
-              <FiDownload className="w-4 h-4 mr-2" />
-              Download PDF
-            </button>
-            <button 
-              onClick={handleSendEmail}
-              disabled={isSending}
-              className={`text-gray-600 hover:text-blue-600 p-2 ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isSending ? (
-                <LoadingSpinner />
-              ) : (
-                <FiMail className="text-xl" />
-              )}
-            </button>
-            <button onClick={onClose} className="text-gray-600 hover:text-red-600 p-2">
-              <FiX className="text-xl" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="space-y-8">
-          {/* Client and Invoice Info */}
-          <div className="grid grid-cols-2 gap-8 p-6 bg-gray-50 rounded-lg">
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-3">Client Details</h3>
-              <p className="text-gray-900 font-medium">{invoice.client.name}</p>
-              <p className="text-gray-600">{invoice.client.company}</p>
-              
-              <div className="mt-4 space-y-2">
-                {invoice.client.email && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <FiMail className="text-gray-400" />
-                    <p>{invoice.client.email}</p>
-                  </div>
-                )}
-                {invoice.client.phone && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <FiPhone className="text-gray-400" />
-                    <p>{invoice.client.phone}</p>
-                  </div>
-                )}
-                {invoice.client.address && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <FiMapPin className="text-gray-400" />
-                    <p>{invoice.client.address}</p>
-                  </div>
-                )}
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto max-w-3xl w-full bg-white rounded-xl shadow-lg">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <Dialog.Title className="text-xl font-bold">Invoice Details</Dialog.Title>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleDownloadPDF}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <FiDownload className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sending}
+                  className={`text-gray-600 hover:text-gray-800 ${sending ? 'opacity-50' : ''}`}
+                >
+                  {sending ? (
+                    <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <FiMail className="w-5 h-5" />
+                  )}
+                </button>
+                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                  <FiX className="w-5 h-5" />
+                </button>
               </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Invoice Details</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Invoice Date:</span>
-                  <span className="text-gray-900">{invoice.date}</span>
+
+            <div className="space-y-6">
+              {/* Invoice Header */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-gray-900">Invoice Number</h3>
+                  <p className="text-gray-600">{invoice.invoice_number}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Due Date:</span>
-                  <span className="text-gray-900">{invoice.dueDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={`capitalize font-medium ${
-                    invoice.status === 'paid' ? 'text-green-600' :
-                    invoice.status === 'pending' ? 'text-yellow-600' :
-                    'text-red-600'
+                <div>
+                  <h3 className="font-medium text-gray-900">Status</h3>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                    invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {invoice.status}
+                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Items */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Items</h3>
-            <div className="border rounded-lg overflow-hidden">
-              {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 bg-gray-50 p-4 border-b">
-                <div className="col-span-3 font-medium text-gray-700">Item</div>
-                <div className="col-span-6 font-medium text-gray-700">Description</div>
-                <div className="col-span-3 font-medium text-gray-700 text-right">Price</div>
-              </div>
-              
-              {/* Table Body */}
-              <div className="divide-y">
-                {invoice.items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-4 p-4">
-                    <div className="col-span-3">
-                      <p className="text-gray-900">{item.name}</p>
-                    </div>
-                    <div className="col-span-6">
-                      <p className="text-gray-600">{item.description}</p>
-                    </div>
-                    <div className="col-span-3 text-right">
-                      <p className="text-gray-900">{invoice.client.currency}{item.price.toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Total */}
-          <div className="flex justify-end border-t pt-6">
-            <div className="w-64">
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">{invoice.client.currency}{invoice.total.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-3">
-                  <span className="text-gray-900 font-medium">Total:</span>
-                  <span className="text-xl font-bold text-gray-900">
-                    {invoice.client.currency}{invoice.total.toFixed(2)}
-                  </span>
+              {/* Client Details */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Client Details</h3>
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="font-medium">{invoice.client?.name}</p>
+                  {invoice.client?.company && (
+                    <p className="text-gray-600">{invoice.client.company}</p>
+                  )}
+                  <p className="text-gray-600">{invoice.client?.email}</p>
                 </div>
               </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-gray-900">Invoice Date</h3>
+                  <p className="text-gray-600">{formatDate(invoice.date)}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Due Date</h3>
+                  <p className="text-gray-600">{formatDate(invoice.due_date)}</p>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Items</h3>
+                <div className="border rounded overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {invoice.items?.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.name}</td>
+                          <td className="px-6 py-4">{item.description}</td>
+                          <td className="px-6 py-4 text-right">${item.amount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50">
+                      <tr>
+                        <td colSpan={2} className="px-6 py-4 text-right font-medium">Total</td>
+                        <td className="px-6 py-4 text-right font-medium">${invoice.total.toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {invoice.notes && (
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Notes</h3>
+                  <p className="text-gray-600 whitespace-pre-wrap">{invoice.notes}</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </Dialog.Panel>
       </div>
-    </div>
+    </Dialog>
   );
 } 

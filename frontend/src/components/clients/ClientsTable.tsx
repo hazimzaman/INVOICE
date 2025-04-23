@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiEdit2, FiTrash2, FiSearch, FiPlus, FiEye } from 'react-icons/fi';
 import { Client } from '@/types/client';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { removeClient, updateClient } from '@/store/slices/clientsSlice';
+import { deleteClient, updateClient, fetchClients } from '@/store/slices/clientsSlice';
 import EditClientModal from './EditClientModal';
 import ViewClientModal from './ViewClientModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientsTableProps {
   onAddClick: () => void;
@@ -18,27 +19,60 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const { user } = useAuth();
+  const { clients, loading, error } = useAppSelector(state => state.clients);
   const dispatch = useAppDispatch();
-  const clients = useAppSelector(state => state.clients.clients);
 
-  const handleDelete = (client: Client) => {
-    setDeletingClient(client);
+  useEffect(() => {
+    const loadClients = async () => {
+      if (user) {
+        try {
+          await dispatch(fetchClients()).unwrap();
+        } catch (error) {
+          console.error('Failed to fetch clients:', error);
+        }
+      }
+    };
+    loadClients();
+  }, [dispatch, user]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-64 flex items-center justify-center">
+        <div className="text-gray-500">Loading clients...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-64 flex items-center justify-center">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await dispatch(deleteClient(id)).unwrap();
+    } catch (error) {
+      console.error('Failed to delete client:', error);
+    }
   };
 
   const confirmDelete = () => {
     if (deletingClient) {
-      dispatch(removeClient(deletingClient.id));
+      handleDelete(deletingClient.id);
       setDeletingClient(null);
     }
   };
 
-  const handleEdit = (client: Client) => {
-    setEditingClient(client);
-  };
-
-  const handleSaveEdit = (updatedClient: Client) => {
-    dispatch(updateClient(updatedClient));
-    setEditingClient(null);
+  const handleEdit = async (clientId: string, updates: Partial<Client>) => {
+    try {
+      await dispatch(updateClient({ clientId, updates })).unwrap();
+    } catch (error) {
+      console.error('Failed to update client:', error);
+    }
   };
 
   const filteredClients = clients.filter(client => 
@@ -84,8 +118,8 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
               <tr className="border-b border-gray-200">
                 <th className="text-left p-4 font-semibold text-gray-600">NAME</th>
                 <th className="text-left p-4 font-semibold text-gray-600">COMPANY</th>
-                <th className="text-left p-4 font-semibold text-gray-600">CREATED</th>
                 <th className="text-left p-4 font-semibold text-gray-600">CURRENCY</th>
+                <th className="text-left p-4 font-semibold text-gray-600">CREATED</th>
                 <th className="text-right p-4 font-semibold text-gray-600">ACTIONS</th>
               </tr>
             </thead>
@@ -100,9 +134,9 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
                 filteredClients.map((client) => (
                   <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-4 text-gray-800">{client.name}</td>
-                    <td className="p-4 text-gray-800">{client.company}</td>
-                    <td className="p-4 text-gray-600">{client.created}</td>
+                    <td className="p-4 text-gray-800">{client.company || '-'}</td>
                     <td className="p-4 text-gray-600">{client.currency}</td>
+                    <td className="p-4 text-gray-600">{new Date(client.created_at!).toLocaleDateString()}</td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-3">
                         <button 
@@ -115,13 +149,17 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
                           <FiEye className="text-xl" />
                         </button>
                         <button 
-                          onClick={() => handleEdit(client)}
+                          onClick={() => {
+                            setEditingClient(client);
+                          }}
                           className="text-gray-600 hover:text-blue-600"
                         >
                           <FiEdit2 className="text-lg" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(client)}
+                          onClick={() => {
+                            setDeletingClient(client);
+                          }}
                           className="text-gray-600 hover:text-red-600"
                         >
                           <FiTrash2 className="text-lg" />
@@ -141,7 +179,7 @@ export default function ClientsTable({ onAddClick }: ClientsTableProps) {
         <EditClientModal
           isOpen={!!editingClient}
           onClose={() => setEditingClient(null)}
-          onSave={handleSaveEdit}
+          onSave={(updatedClient) => handleEdit(updatedClient.id, updatedClient)}
           client={editingClient}
         />
       )}

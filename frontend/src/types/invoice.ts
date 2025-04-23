@@ -1,19 +1,30 @@
 import { Client } from './client';
+import { Settings } from './settings';
 
 export interface InvoiceItem {
-  id: string;
+  id?: string;
+  invoice_id?: string;
   name: string;
-  price: number;
-  description: string;
+  description?: string;
+  amount: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Invoice {
   id: string;
-  invoiceNumber: string;
+  user_id: string;
+  client_id: string;
+  invoice_number: string;
   date: string;
-  dueDate: string;
-  client: Client;
-  items: InvoiceItem[];
+  due_date: string;
+  status: 'pending' | 'paid' | 'overdue';
+  subtotal: number;
   total: number;
-  status: 'pending' | 'paid';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  items: InvoiceItem[];
+  client?: Client;
+  settings?: Settings;
 } 

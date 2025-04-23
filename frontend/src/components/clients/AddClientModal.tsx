@@ -2,15 +2,17 @@
 
 import { useState } from 'react';
 import { FiX } from 'react-icons/fi';
-import { Client } from '@/types/client';
+import { Client, NewClient } from '@/types/client';
+import { useAppDispatch } from '@/store/hooks';
+import { addClient } from '@/store/slices/clientsSlice';
 
 interface AddClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddClient: (client: Omit<Client, 'id' | 'created'>) => void;
 }
 
-export default function AddClientModal({ isOpen, onClose, onAddClient }: AddClientModalProps) {
+export default function AddClientModal({ isOpen, onClose }: AddClientModalProps) {
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -20,29 +22,22 @@ export default function AddClientModal({ isOpen, onClose, onAddClient }: AddClie
     currency: '€'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    onAddClient({
-      name: formData.name,
-      company: formData.company,
-      currency: formData.currency,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address
-    });
-
-    // Reset form
-    setFormData({
-      name: '',
-      company: '',
-      email: '',
-      phone: '',
-      address: '',
-      currency: '€'
-    });
-
-    onClose();
+    try {
+      await dispatch(addClient(formData)).unwrap();
+      onClose();
+      setFormData({
+        name: '',
+        company: '',
+        email: '',
+        phone: '',
+        address: '',
+        currency: '€'
+      });
+    } catch (error) {
+      console.error('Failed to add client:', error);
+    }
   };
 
   if (!isOpen) return null;

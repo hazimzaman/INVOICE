@@ -11,10 +11,40 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined
+    detectSessionInUrl: true
   },
   db: {
     schema: 'public'
+  },
+  global: {
+    headers: {
+      'x-my-custom-header': 'my-app-name'
+    }
   }
-}) 
+})
+
+export const checkAuth = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('Auth error:', error);
+    throw error;
+  }
+  
+  if (!session) {
+    console.error('No session found');
+    throw new Error('Authentication required');
+  }
+
+  console.log('Current session:', {
+    userId: session.user.id,
+    email: session.user.email
+  });
+
+  return session;
+};
+
+// Add this to check auth state
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth state changed:', event, session);
+}); 
