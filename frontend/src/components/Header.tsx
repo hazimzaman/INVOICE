@@ -5,11 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppSelector } from '@/store/hooks';
 import { Settings } from '@/types/settings';
+import { useLoading } from '@/contexts/LoadingContext';
+import Image from 'next/image';
 
 export default function Header() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { data: settings } = useAppSelector<{ data: Settings | null }>((state) => state.settings);
+  const { setLoading } = useLoading();
+
+  // Get user's name from user metadata
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
   const handleLogout = async () => {
     try {
@@ -20,14 +26,25 @@ export default function Header() {
     }
   };
 
+  const handleNavigation = (path: string) => {
+    setLoading(true);
+    router.push(path);
+  };
+
   return (
     <header className="bg-white shadow-md w-full">
       <div className="container mx-auto max-w-[1240px] px-4">
         <nav className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 gap-5">
-              <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold text-xl">
-                {settings?.business_name || 'InvoiceApp'}
+              <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold">
+                <Image 
+                  src="/logo.png" 
+                  alt="Invoice App Logo" 
+                  width={180} 
+                  height={50}
+                  priority
+                />
               </Link>
               
               {user && (
@@ -66,8 +83,8 @@ export default function Header() {
                 </>
               ) : (
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">
-                    {user.email}
+                   <span className="text-sm text-gray-600">
+                    {userName}
                   </span>
                   <button
                     onClick={handleLogout}
