@@ -32,8 +32,7 @@ export const checkAuth = async () => {
   }
   
   if (!session) {
-    console.error('No session found');
-    throw new Error('Authentication required');
+    return null;
   }
 
   console.log('Current session:', {

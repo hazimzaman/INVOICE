@@ -47,21 +47,21 @@ export const generateInvoicePdf = (invoice: Invoice, businessInfo: BusinessInfo)
   doc.setFont('helvetica', 'bold');
   doc.text('Invoice No:', leftStart, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.invoiceNumber, leftValueStart, currentY);
+  doc.text(invoice.invoice_number, leftValueStart, currentY);
   currentY += lineHeight;
 
   doc.setFont('helvetica', 'bold');
   doc.text('Bill to:', leftStart, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.client.company, leftValueStart, currentY);
+  doc.text(invoice.client?.company || '', leftValueStart, currentY);
   currentY += lineHeight;
-  doc.text(invoice.client.name, leftValueStart, currentY);
+  doc.text(invoice.client?.name || '', leftValueStart, currentY);
   currentY += lineHeight;
 
   doc.setFont('helvetica', 'bold');
   doc.text('Address:', leftStart, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.client.address || '', leftValueStart, currentY);
+  doc.text(invoice.client?.address || '', leftValueStart, currentY);
 
   // Date - right aligned
   doc.setFont('helvetica', 'bold');
@@ -94,8 +94,8 @@ export const generateInvoicePdf = (invoice: Invoice, businessInfo: BusinessInfo)
     currentY += 10;
     doc.text((index + 1).toString(), 20, currentY);
     doc.text(item.name, 40, currentY);
-    doc.text(item.price.toFixed(2), 120, currentY, { align: 'right' });
-    doc.text(item.price.toFixed(2), 190, currentY, { align: 'right' });
+    doc.text(item.amount.toFixed(2), 120, currentY, { align: 'right' });
+    doc.text(item.amount.toFixed(2), 190, currentY, { align: 'right' });
   });
 
   // Bottom line
@@ -106,7 +106,7 @@ export const generateInvoicePdf = (invoice: Invoice, businessInfo: BusinessInfo)
   currentY += 10;
   doc.setFont('helvetica', 'bold');
   doc.text('Total', 120, currentY, { align: 'right' });
-  doc.text(`${invoice.client.currency} ${invoice.total.toFixed(2)}`, 190, currentY, { align: 'right' });
+  doc.text(`${invoice.client?.currency || '€'} ${invoice.total.toFixed(2)}`, 190, currentY, { align: 'right' });
 
   return doc;
 }; 

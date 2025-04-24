@@ -1,44 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
-const LoginForm = () => {
-  const router = useRouter();
+export default function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [error, setError] = useState<string | null>(null);
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    
+    setError(null);
+
     try {
-      // Sign in with Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) {
-        console.error('Sign in error:', error);
-        throw new Error('Invalid email or password');
-      }
-
-      if (data?.user) {
-        router.push('/'); // Redirect to home page
-        router.refresh(); // Refresh to update header state
-      }
-
+      await signIn(email, password);
     } catch (error) {
-      console.error('Login error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to login');
+      setError(error instanceof Error ? error.message : 'Failed to sign in');
     } finally {
       setLoading(false);
     }
@@ -61,9 +42,9 @@ const LoginForm = () => {
         <input
           type="email"
           id="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
         />
       </div>
@@ -75,31 +56,27 @@ const LoginForm = () => {
         <input
           type="password"
           id="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           required
         />
       </div>
 
       <button
         type="submit"
-        className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
         disabled={loading}
+        className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
       >
-        {loading ? 'Logging in...' : 'Login'}
+        {loading ? 'Signing in...' : 'Sign In'}
       </button>
 
-      <div className="text-center mt-4">
-        <a 
-          href="/forgot-password" 
-          className="text-blue-500 hover:text-blue-600 text-sm"
-        >
-          Forgot Password?
-        </a>
-      </div>
+      <p className="mt-4 text-center text-gray-600">
+        Don't have an account?{' '}
+        <Link href="/signup" className="text-blue-500 hover:text-blue-600">
+          Sign up
+        </Link>
+      </p>
     </form>
   );
-};
-
-export default LoginForm; 
+} 
