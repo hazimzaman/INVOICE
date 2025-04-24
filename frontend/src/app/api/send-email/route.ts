@@ -5,39 +5,37 @@ import type { SentMessageInfo } from 'nodemailer';
 const transporter = nodemailer.createTransport({
   host: 'smtp.zoho.com',
   port: 465,
-  secure: true, // Use SSL/TLS
+  secure: true, // Use SSL/TLS for port 465
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: 'hazimzaman@primocreators.com',
+    pass: '(Byebye123)@',
   },
   tls: {
-    rejectUnauthorized: false // Only if you have SSL certificate issues
+    rejectUnauthorized: true
   }
 });
 
-interface EmailAttachment {
-  filename: string;
-  content: string;  // Base64 string
-}
-
 export async function POST(request: Request) {
   try {
-    const { to, subject, body, attachments }: { 
-      to: string;
-      subject: string;
-      body: string;
-      attachments?: EmailAttachment[];
-    } = await request.json();
+    const { to, subject, body, attachments } = await request.json();
+
+    // Validate required fields
+    if (!to || !subject || !body) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
 
     const mailOptions = {
       from: {
         name: 'Invoice System',
-        address: process.env.SMTP_FROM_EMAIL!
+        address: 'hazimzaman@primocreators.com'
       },
       to,
       subject,
       html: body,
-      attachments: attachments?.map(attachment => ({
+      attachments: attachments?.map((attachment: any) => ({
         filename: attachment.filename,
         content: Buffer.from(attachment.content, 'base64'),
         encoding: 'base64'
@@ -45,19 +43,16 @@ export async function POST(request: Request) {
     };
 
     const info = await transporter.sendMail(mailOptions) as SentMessageInfo;
-    console.log('Email sent successfully:', info.messageId);
     
     return NextResponse.json({ 
-      success: true, 
+      message: 'Email sent successfully',
       messageId: info.messageId 
     });
+
   } catch (error) {
-    console.error('Email error:', error);
+    console.error('Email sending error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to send email', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
+      { error: 'Failed to send email', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

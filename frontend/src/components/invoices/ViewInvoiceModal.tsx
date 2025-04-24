@@ -35,17 +35,30 @@ export default function ViewInvoiceModal({ isOpen, onClose, invoice }: ViewInvoi
     if (!template) {
       emailContent = `Dear {{client_name}},
 
+
+
 I hope this email finds you well. Please find attached invoice {{invoice_number}} for {{total_amount}}.
 
+
+
 Payment Details:
+
 - Invoice Number: {{invoice_number}}
+
 - Due Date: {{due_date}}
+
 - Amount Due: {{total_amount}}
 
+
+
 If you have any questions, please don't hesitate to contact me.
+
 Contact Email: {{contact_email}}
 
+
+
 Best regards,
+
 {{business_name}}`;
     }
 

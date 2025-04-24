@@ -3,17 +3,14 @@ interface EmailAttachment {
   content: string;
 }
 
-export async function sendEmail({ 
-  to, 
-  subject, 
-  body, 
-  attachments 
-}: { 
-  to: string; 
-  subject: string; 
-  body: string; 
+interface SendEmailParams {
+  to: string;
+  subject: string;
+  body: string;
   attachments?: EmailAttachment[];
-}) {
+}
+
+export async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
   try {
     const response = await fetch('/api/send-email', {
       method: 'POST',
