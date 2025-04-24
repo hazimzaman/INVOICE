@@ -24,6 +24,9 @@ export default function BusinessForm({ initialData, onSubmit }: BusinessFormProp
       const file = e.target.files?.[0];
       if (!file) return;
 
+      // Log file details
+      console.log('Uploading file:', file.name, file.type);
+
       // Check file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         throw new Error('File size must be less than 5MB');
@@ -50,10 +53,16 @@ export default function BusinessForm({ initialData, onSubmit }: BusinessFormProp
         .from('logos')
         .getPublicUrl(fileName);
 
+      // Log the public URL
+      console.log('Logo public URL:', publicUrl);
+
       setFormData(prev => ({
         ...prev,
         business_logo: publicUrl
       }));
+
+      // Log the updated form data
+      console.log('Updated form data:', formData);
     } catch (error: any) {
       console.error('Error uploading logo:', error.message);
       toast.error(error.message || 'Failed to upload logo');

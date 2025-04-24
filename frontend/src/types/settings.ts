@@ -18,4 +18,14 @@ export interface Settings {
   bcc_email: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface BusinessInfo {
+  name: string;
+  logo?: string;
+  address: string;
+  contactPhone: string;
+  contactName: string;
+  contactEmail: string;
+  wiseEmail: string;
 } 

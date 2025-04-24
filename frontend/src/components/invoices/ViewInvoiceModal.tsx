@@ -2,11 +2,11 @@ import { Dialog } from '@headlessui/react';
 import { FiX, FiDownload, FiMail } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
 import { formatDate } from '@/utils/dateFormat';
-import { generateInvoicePDF } from './InvoicePDFTemplate';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '@/store/hooks';
 import { sendEmail } from '@/lib/email';
 import { useState } from 'react';
+import { generatePDF } from '@/utils/generatePDF';
 
 interface ViewInvoiceModalProps {
   isOpen: boolean;
@@ -73,16 +73,25 @@ Best regards,
 
   const handleDownloadPDF = async () => {
     try {
-      // Ensure invoice has settings data
-      const invoiceWithSettings = {
-        ...invoice,
-        settings: invoice.settings || settings || undefined
-      };
+      const pdfBuffer = await generatePDF(invoice, settings || {
+        business_name: '',
+        business_logo: '',
+        business_address: '',
+        contact_name: '',
+        contact_email: '',
+        contact_phone: '',
+        wise_email: '',
+        invoice_prefix: '',
+        footer_note: '',
+        current_invoice_number: 0,
+        email_template: '',
+        email_subject: '',
+        email_signature: '',
+        cc_email: '',
+        bcc_email: ''
+      });
       
-      const pdfBytes = await generateInvoicePDF(invoiceWithSettings);
-      
-      // Create blob and download
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -107,10 +116,33 @@ Best regards,
         throw new Error('Client email is required');
       }
 
-      // Generate PDF
-      const pdfBytes = await generateInvoicePDF({
-        ...invoice,
-        settings: invoice.settings || settings || undefined
+      // Generate PDF using the API
+      const pdfResponse = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoice,
+          businessInfo: {
+            name: settings?.business_name || '',
+            logo: settings?.business_logo || '',
+            address: settings?.business_address || '',
+            contactPhone: settings?.contact_phone || '',
+            contactName: settings?.contact_name || '',
+            contactEmail: settings?.contact_email || '',
+            wiseEmail: settings?.wise_email || ''
+          }
+        }),
+      });
+
+      if (!pdfResponse.ok) throw new Error('Failed to generate PDF');
+
+      const pdfBlob = await pdfResponse.blob();
+      const pdfBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1]);
+        reader.readAsDataURL(pdfBlob);
       });
 
       // Prepare email content
@@ -124,7 +156,7 @@ Best regards,
         body: emailBody,
         attachments: [{
           filename: `invoice-${invoice.invoice_number}.pdf`,
-          content: Buffer.from(pdfBytes).toString('base64')
+          content: pdfBase64 as string
         }]
       });
 
@@ -193,11 +225,11 @@ Best regards,
               <div>
                 <h3 className="font-medium text-gray-900 mb-2">Client Details</h3>
                 <div className="bg-gray-50 p-4 rounded">
-                  <p className="font-medium">{invoice.client?.name}</p>
+                  <p className="font-medium">Name: {invoice.client?.name}</p>
                   {invoice.client?.company && (
-                    <p className="text-gray-600">{invoice.client.company}</p>
+                    <p className="text-gray-600">Company: {invoice.client.company}</p>
                   )}
-                  <p className="text-gray-600">{invoice.client?.email}</p>
+                  <p className="text-gray-600">Email: {invoice.client?.email}</p>
                 </div>
               </div>
 
