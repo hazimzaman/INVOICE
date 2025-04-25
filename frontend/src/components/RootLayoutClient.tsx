@@ -24,7 +24,7 @@ export default function RootLayoutClient({
   }, [dispatch]);
 
   return (
-    <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <div className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <AuthProvider>
         <HeaderWrapper />
         <main className="min-h-screen bg-gray-50">
@@ -33,6 +33,6 @@ export default function RootLayoutClient({
         <Notification />
       </AuthProvider>
       <Toaster position="top-right" />
-    </body>
+    </div>
   );
 } 

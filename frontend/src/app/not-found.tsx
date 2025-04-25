@@ -10,9 +10,9 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full text-center">
+      <div className=" w-full max-w-[1240px] grid grid-cols-2 gag-2 text-center">
         <Image
-          src="/Error.png"
+          src="/Group 102.png"
           alt="404 Error"
           width={400}
           height={400}
@@ -20,13 +20,18 @@ export default function NotFound() {
           priority
         />
         
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          Page Not Found
+        <div className='flex flex-col items-center justify-center'>
+        <h1 className="text-9xl font-bold text-gray-900 mb-2 ">
+         404
         </h1>
-        
+        <div>
+        <p className="text-gray-600 ">
+        Page Not Found
+        </p>
         <p className="text-gray-600 mb-8">
           Something went wrong. The page you're looking for doesn't exist.
         </p>
+        </div>
 
         <Link 
           href="/dashboard" 
@@ -34,6 +39,9 @@ export default function NotFound() {
         >
           Go to Dashboard
         </Link>
+        </div>
+
+       
       </div>
     </div>
   );

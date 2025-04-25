@@ -28,13 +28,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${openSans.variable} ${montserrat.variable}`}>
-      <Providers>
-        <LoadingProvider>
-          <RootLayoutClient geistSans={geistSans} geistMono={geistMono}>
-            {children}
-          </RootLayoutClient>
-        </LoadingProvider>
-      </Providers>
+      <body>
+        <Providers>
+          <LoadingProvider>
+            <RootLayoutClient geistSans={geistSans} geistMono={geistMono}>
+              {children}
+            </RootLayoutClient>
+          </LoadingProvider>
+        </Providers>
+      </body>
     </html>
   );
 }
