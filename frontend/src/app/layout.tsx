@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from '@/store/provider';
 import RootLayoutClient from "@/components/RootLayoutClient";
 import { LoadingProvider } from '@/contexts/LoadingContext';
+import { openSans, montserrat } from '@/utils/fonts';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${openSans.variable} ${montserrat.variable}`}>
       <Providers>
         <LoadingProvider>
           <RootLayoutClient geistSans={geistSans} geistMono={geistMono}>

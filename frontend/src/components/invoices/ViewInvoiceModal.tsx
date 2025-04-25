@@ -116,29 +116,26 @@ Best regards,
         throw new Error('Client email is required');
       }
 
-      // Generate PDF using the API
-      const pdfResponse = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          invoice,
-          businessInfo: {
-            name: settings?.business_name || '',
-            logo: settings?.business_logo || '',
-            address: settings?.business_address || '',
-            contactPhone: settings?.contact_phone || '',
-            contactName: settings?.contact_name || '',
-            contactEmail: settings?.contact_email || '',
-            wiseEmail: settings?.wise_email || ''
-          }
-        }),
+      // Generate PDF using the new PDF generator
+      const pdfBlob = await generatePDF(invoice, settings || {
+        business_name: '',
+        business_logo: '',
+        business_address: '',
+        contact_name: '',
+        contact_email: '',
+        contact_phone: '',
+        wise_email: '',
+        invoice_prefix: '',
+        footer_note: '',
+        current_invoice_number: 0,
+        email_template: '',
+        email_subject: '',
+        email_signature: '',
+        cc_email: '',
+        bcc_email: ''
       });
 
-      if (!pdfResponse.ok) throw new Error('Failed to generate PDF');
-
-      const pdfBlob = await pdfResponse.blob();
+      // Convert blob to base64
       const pdfBase64 = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result?.toString().split(',')[1]);
@@ -147,7 +144,7 @@ Best regards,
 
       // Prepare email content
       const emailBody = replaceTemplateVariables(settings?.email_template || '');
-      const emailSubject = replaceTemplateVariables('Invoice {{invoice_number}} from {{business_name}}');
+      const emailSubject = replaceTemplateVariables(settings?.email_subject || 'Invoice {{invoice_number}} from {{business_name}}');
 
       // Send email with PDF attachment
       await sendEmail({

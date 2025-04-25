@@ -4,18 +4,28 @@ import { Invoice } from '@/types/invoice';
 import { Settings } from '@/types/settings';
 import { formatDate } from '@/utils/dateFormat';
 
-// Register fonts
+// Register fonts for PDF
 Font.register({
-  family: 'Helvetica',
+  family: 'OpenSans',
   fonts: [
-    { src: '/fonts/Helvetica.ttf' },
-    { src: '/fonts/Helvetica-Bold.ttf', fontWeight: 'bold' },
+    { src: '/OpenSans-Regular.ttf' },
+    { src: '/OpenSans-Bold.ttf', fontWeight: 'bold' }
+  ]
+});
+
+Font.register({
+  family: 'Montserrat',
+  fonts: [
+    { src: '/Montserrat-Regular.ttf', fontWeight: 'normal' },
+    { src: '/Montserrat-Bold.ttf', fontWeight: 'bold' },
+    { src: '/OpenSans-Bold.ttf', fontWeight: 'bold' },
+    { src: '/OpenSans-Regular.ttf', fontWeight: 'normal' },
   ]
 });
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Montserrat',
     padding: '40 40 20 40',
     fontSize: 10.5,
     position: 'relative',
@@ -34,21 +44,22 @@ const styles = StyleSheet.create({
     left: -100,
     zIndex: -1,
     opacity: 0.12,
-    top: 80,
+    top: 67,
   },
   header: {
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 50,
   },
   invoiceTitle: {
+    fontFamily: 'OpenSans',
     fontSize: 48.6,
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
+    fontWeight: 'normal',
     letterSpacing: 2,
     marginTop: 30,
     alignSelf: 'center',
-    color: '#2563eb',
+    
   },
   companyInfo: {
     textAlign: 'right',
@@ -65,7 +76,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 15,
     fontWeight: 'bold',
-    fontFamily: 'Helvetica',
+    fontFamily: 'OpenSans',
     marginBottom: 4,
   },
   companyDetail: {
@@ -103,7 +114,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 2,
   },
   detailRow: {
     display: 'flex',
@@ -213,7 +224,10 @@ export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> 
       <Page size="A4" style={styles.page}>
         <View style={styles.invoiceContainer}>
           <View style={styles.blobWrapper}>
-            <Image src="/images/Frame.png" />
+            <Image 
+              src="/Frame.png"
+              
+            />
           </View>
           
           <View style={styles.header}>
@@ -300,3 +314,10 @@ export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> 
       </Page>
     </Document>
 ); 
+
+
+
+
+
+
+
