@@ -32,7 +32,7 @@ export default function InvoicesPage() {
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6 max-w-[1240px] w-full mx-auto ">
-        <h1 className="text-2xl font-bold">Invoicesss</h1>
+        <h1 className="text-2xl font-bold">Invoices</h1>
         
         <div className="flex gap-4">
           {/* Search */}
