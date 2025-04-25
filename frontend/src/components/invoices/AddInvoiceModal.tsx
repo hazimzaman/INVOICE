@@ -183,16 +183,7 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
                     required
                   />
                 </div>
-                <div>
-                  <label className="block font-medium mb-2">Due Date</label>
-                  <input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-                    className="w-full p-2 border rounded"
-                    required
-                  />
-                </div>
+                
               </div>
 
               {/* Items Section */}

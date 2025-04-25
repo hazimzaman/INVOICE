@@ -21,9 +21,9 @@ export default function ViewInvoiceModal({ isOpen, onClose, invoice }: ViewInvoi
   const replaceTemplateVariables = (template: string) => {
     const replacements = {
       '{{client_name}}': invoice.client?.name || '',
-      '{{invoice_number}}': invoice.invoice_number,
+      '{{invoice_number}}': `${invoice.invoice_number} ${invoice.client?.name}`,
       '{{total_amount}}': `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
-      '{{due_date}}': formatDate(invoice.due_date),
+      '{{date}}': formatDate(invoice.date),
       '{{payment_details}}': settings?.wise_email || '',
       '{{business_name}}': settings?.business_name || '',
       '{{contact_email}}': settings?.contact_email || ''
@@ -168,35 +168,13 @@ Best regards,
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" aria-hidden="true" />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="mx-auto max-w-3xl w-full bg-white rounded-xl shadow-lg">
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <Dialog.Title className="text-xl font-bold">Invoice Details</Dialog.Title>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleDownloadPDF}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  <FiDownload className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleSendEmail}
-                  disabled={sending}
-                  className={`text-gray-600 hover:text-gray-800 ${sending ? 'opacity-50' : ''}`}
-                >
-                  {sending ? (
-                    <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <FiMail className="w-5 h-5" />
-                  )}
-                </button>
-                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                  <FiX className="w-5 h-5" />
-                </button>
-              </div>
             </div>
 
             <div className="space-y-6">
@@ -204,7 +182,9 @@ Best regards,
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <h3 className="font-medium text-gray-900">Invoice Number</h3>
-                  <p className="text-gray-600">{invoice.invoice_number}</p>
+                  <p className="text-gray-600">
+                    {invoice.invoice_number} {invoice.client?.name}
+                  </p>
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900">Status</h3>
@@ -235,10 +215,6 @@ Best regards,
                 <div>
                   <h3 className="font-medium text-gray-900">Invoice Date</h3>
                   <p className="text-gray-600">{formatDate(invoice.date)}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Due Date</h3>
-                  <p className="text-gray-600">{formatDate(invoice.due_date)}</p>
                 </div>
               </div>
 

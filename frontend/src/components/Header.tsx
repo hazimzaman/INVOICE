@@ -7,12 +7,15 @@ import { useAppSelector } from '@/store/hooks';
 import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
+import { FiMenu, FiUser, FiSettings } from 'react-icons/fi';
+import { useState } from 'react';
 
 export default function Header() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { data: settings } = useAppSelector<{ data: Settings | null }>((state) => state.settings);
   const { setLoading } = useLoading();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -29,6 +32,10 @@ export default function Header() {
   const handleNavigation = (path: string) => {
     setLoading(true);
     router.push(path);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
   return (
@@ -58,9 +65,7 @@ export default function Header() {
                   <Link href="/reports" className="text-gray-800 hover:text-gray-600">
                     Reports
                   </Link>
-                  <Link href="/settings" className="text-gray-800 hover:text-gray-600">
-                    Settings
-                  </Link>
+                  
                 </div>
               )}
             </div>
@@ -82,36 +87,51 @@ export default function Header() {
                   </Link>
                 </>
               ) : (
-                <div className="flex items-center space-x-4">
-                   <span className="text-sm text-gray-600">
-                    {userName}
-                  </span>
+                <div className="relative">
                   <button
-                    onClick={handleLogout}
-                    className="flex items-center px-4 py-2 text-red-600 hover:text-white border border-red-600 hover:bg-red-600 rounded-md transition-all duration-200 ease-in-out"
+                    onClick={toggleDropdown}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none cursor-pointer"
                   >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-5 w-5 mr-2" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
-                      />
-                    </svg>
-                    Logout
+                    <FiUser className="w-5 h-5" />
+                    <span className="hidden sm:inline">{userName}</span>
                   </button>
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-58 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200 ">
+                      <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">
+                        {user.email}
+                      </div>
+                      <Link
+                        href="/settings"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <FiSettings className="w-4 h-4 mr-2" />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </nav>
       </div>
+
+      {/* Overlay to close dropdown when clicking outside */}
+      {isDropdownOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setIsDropdownOpen(false)}
+        />
+      )}
     </header>
   );
 } 

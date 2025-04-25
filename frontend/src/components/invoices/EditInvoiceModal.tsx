@@ -160,16 +160,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                     <option value="overdue">Overdue</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block font-medium mb-2">Due Date</label>
-                  <input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-                    className="w-full p-2 border rounded"
-                    required
-                  />
-                </div>
+                
               </div>
 
               {/* Items Section */}

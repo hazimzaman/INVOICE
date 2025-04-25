@@ -35,6 +35,8 @@ interface Stats {
   averageInvoiceAmount: number;
 }
 
+type TimePeriod = 'today' | 'weekly' | 'monthly' | 'yearly';
+
 export default function ReportsPage() {
   const dispatch = useAppDispatch();
   const { invoices, loading: invoicesLoading } = useAppSelector((state) => state.invoices);
@@ -54,6 +56,7 @@ export default function ReportsPage() {
   const [topClients, setTopClients] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('monthly');
 
   useEffect(() => {
     // Fetch data when component mounts
@@ -122,6 +125,26 @@ export default function ReportsPage() {
     }
   }, [invoices, clients, invoicesLoading, clientsLoading]);
 
+  const filterDataByPeriod = (date: string, period: TimePeriod) => {
+    const today = new Date();
+    const dataDate = new Date(date);
+    
+    switch(period) {
+      case 'today':
+        return dataDate.toDateString() === today.toDateString();
+      case 'weekly':
+        const weekAgo = new Date(today.setDate(today.getDate() - 7));
+        return dataDate >= weekAgo;
+      case 'monthly':
+        return dataDate.getMonth() === today.getMonth() && 
+               dataDate.getFullYear() === today.getFullYear();
+      case 'yearly':
+        return dataDate.getFullYear() === today.getFullYear();
+      default:
+        return true;
+    }
+  };
+
   if (invoicesLoading || clientsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -146,7 +169,24 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[1240px]">
-      <h1 className="text-2xl font-bold mb-6">Reports & Analytics</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Reports & Analytics</h1>
+        <div className="flex gap-2">
+          {(['today', 'weekly', 'monthly', 'yearly'] as TimePeriod[]).map((period) => (
+            <button
+              key={period}
+              onClick={() => setSelectedPeriod(period)}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                selectedPeriod === period
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {period.charAt(0).toUpperCase() + period.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

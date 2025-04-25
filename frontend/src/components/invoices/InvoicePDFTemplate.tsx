@@ -251,7 +251,7 @@ export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> 
             <View style={styles.leftDetails}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Invoice No:</Text>
-                <Text>{invoice?.invoice_number}</Text>
+                <Text>{invoice.invoice_number} {invoice.client?.name}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Bill to:</Text>
@@ -269,8 +269,8 @@ export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> 
 
             <View style={styles.rightDetails}>
               <View style={styles.dateContainer}>
-                <Text style={styles.detailLabel}>Due Date:</Text>
-                <Text> {formatDate(invoice.due_date)}</Text>
+                <Text style={styles.detailLabel}>Date:</Text>
+                <Text> {formatDate(invoice.date)}</Text>
               </View>
             </View>
           </View>
