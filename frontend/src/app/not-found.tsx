@@ -16,7 +16,7 @@ export default function NotFound() {
           alt="404 Error"
           width={400}
           height={400}
-          className="mx-auto mb-8"
+          className="mx-auto mb-8 w-full h-auto"
           priority
         />
         

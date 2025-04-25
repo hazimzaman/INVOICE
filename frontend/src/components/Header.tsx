@@ -40,10 +40,10 @@ export default function Header() {
               <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold">
                 <Image 
                   src="/logo.png" 
-                  alt="Invoice App Logo" 
+                  alt="Logo" 
                   width={180} 
                   height={50}
-                  priority
+                  className="w-auto h-auto"
                 />
               </Link>
               
