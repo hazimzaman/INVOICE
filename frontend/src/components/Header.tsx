@@ -59,7 +59,7 @@ export default function Header() {
                 />
               </Link>
               
-              {/* Only show nav links if user is logged in and not on password reset pages */}
+              {/* Only show nav links if user is logged in */}
               {user && !isPasswordResetPage && (
                 <div className="hidden md:flex items-center space-x-4">
                   <Link href="/invoices" className="text-gray-800 hover:text-gray-600">
@@ -75,9 +75,9 @@ export default function Header() {
               )}
             </div>
             
-            {/* Show login/signup on password reset pages */}
+            {/* Auth buttons section */}
             <div className="flex items-center space-x-4">
-              {isPasswordResetPage ? (
+              {!user ? (
                 <>
                   <Link 
                     href="/login"
@@ -104,7 +104,7 @@ export default function Header() {
 
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-58 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200 ">
+                    <div className="absolute right-0 mt-2 w-58 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                       <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">
                         {user?.email}
                       </div>
@@ -118,7 +118,7 @@ export default function Header() {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className=" w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         <FiLogOut className="w-4 h-4 mr-2" />
                         Logout
@@ -132,7 +132,7 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Overlay to close dropdown when clicking outside */}
+      {/* Overlay */}
       {isDropdownOpen && (
         <div
           className="fixed inset-0 z-40"

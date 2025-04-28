@@ -121,7 +121,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                 <select
                   value={formData.client_id}
                   onChange={(e) => setFormData(prev => ({ ...prev, client_id: e.target.value }))}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border border-[var(--color-gray-300)] rounded"
                   required
                 >
                   <option value="">Select a client</option>
@@ -141,7 +141,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                     type="text"
                     value={formData.invoice_number}
                     onChange={(e) => setFormData(prev => ({ ...prev, invoice_number: e.target.value }))}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border border-[var(--color-gray-300)] rounded"
                     required
                   />
                 </div>
@@ -153,7 +153,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                       ...prev, 
                       status: e.target.value as Invoice['status']
                     }))}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border border-[var(--color-gray-300)] rounded"
                   >
                     <option value="pending">Pending</option>
                     <option value="paid">Paid</option>
@@ -190,14 +190,14 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                     placeholder="Item name"
                     value={newItem.name}
                     onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-                    className="p-2 border rounded"
+                    className="p-2 border border-[var(--color-gray-300)] rounded"
                   />
                   <input
                     type="text"
                     placeholder="Description"
                     value={newItem.description}
                     onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                    className="p-2 border rounded"
+                    className="p-2 border border-[var(--color-gray-300)] rounded"
                   />
                   <div className="flex gap-2">
                     <input
@@ -205,7 +205,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                       placeholder="Amount"
                       value={newItem.amount || ''}
                       onChange={(e) => setNewItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                      className="p-2 border rounded w-full"
+                      className="p-2 border border-[var(--color-gray-300)] rounded w-full"
                     />
                     <button
                       type="button"
@@ -231,7 +231,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border border-[var(--color-gray-300)] rounded"
                   rows={3}
                 />
               </div>

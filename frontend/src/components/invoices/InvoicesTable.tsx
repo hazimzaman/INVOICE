@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchInvoices, deleteInvoice } from '@/store/slices/invoicesSlice';
-import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle, FiSend } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
 import ViewInvoiceModal from './ViewInvoiceModal';
 import EditInvoiceModal from './EditInvoiceModal';
@@ -36,6 +36,7 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
 
   const defaultSettings: Settings = {
     business_name: '',
@@ -120,6 +121,7 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
   };
 
   const handleSendEmail = async (invoice: Invoice) => {
+    setLoadingStates(prev => ({ ...prev, [`send_${invoice.id}`]: true }));
     try {
       if (!invoice.client?.email) {
         throw new Error('Client email is required');
@@ -153,6 +155,8 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
     } catch (error) {
       console.error('Failed to send invoice:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [`send_${invoice.id}`]: false }));
     }
   };
 
@@ -370,10 +374,15 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
                     setSelectedInvoice(invoice);
                     handleSendEmail(invoice);
                   }}
-                  className="text-gray-600 hover:text-gray-900 mx-2"
+                  disabled={loadingStates[`send_${invoice.id}`]}
+                  className={`text-gray-600 hover:text-gray-900 mx-2 ${loadingStates[`send_${invoice.id}`] ? 'animate-spin' : ''}`}
                   title="Send Email"
                 >
-                  <FiMail className="w-5 h-5" />
+                  {loadingStates[`send_${invoice.id}`] ? (
+                    <FiSend className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <FiMail className="w-5 h-5" />
+                  )}
                 </button>
                 <button
                   onClick={() => {
