@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { getPasswordResetEmailContent } from '@/utils/email';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -28,15 +29,21 @@ export default function ForgotPassword() {
       }
 
       // Send reset password email
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      const { error } = await supabase.auth.resetPasswordForEmail(
         email.toLowerCase(),
         {
-          redirectTo: `${window.location.origin}/update-password`
+          redirectTo: `${window.location.origin}/update-password`,
+          emailRedirectTo: `${window.location.origin}/update-password`,
+          data: {
+            email_template: getPasswordResetEmailContent(
+              `${window.location.origin}/update-password`
+            )
+          }
         }
       );
 
-      if (resetError) {
-        console.error('Reset error:', resetError);
+      if (error) {
+        console.error('Reset error:', error);
         throw new Error('Failed to initiate password reset');
       }
 

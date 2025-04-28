@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppSelector } from '@/store/hooks';
 import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
-import { FiMenu, FiUser, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
 import { useState } from 'react';
+
 
 export default function Header() {
   const router = useRouter();
@@ -19,6 +20,10 @@ export default function Header() {
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+
+  // Add this check to hide user section on password reset pages
+  const pathname = usePathname();
+  const isPasswordResetPage = pathname?.includes('reset-password') || pathname?.includes('update-password');
 
   const handleLogout = async () => {
     try {
@@ -54,7 +59,8 @@ export default function Header() {
                 />
               </Link>
               
-              {user && (
+              {/* Only show nav links if user is logged in and not on password reset pages */}
+              {user && !isPasswordResetPage && (
                 <div className="hidden md:flex items-center space-x-4">
                   <Link href="/invoices" className="text-gray-800 hover:text-gray-600">
                     Invoices
@@ -65,13 +71,13 @@ export default function Header() {
                   <Link href="/reports" className="text-gray-800 hover:text-gray-600">
                     Reports
                   </Link>
-                  
                 </div>
               )}
             </div>
             
+            {/* Show login/signup on password reset pages */}
             <div className="flex items-center space-x-4">
-              {!user ? (
+              {isPasswordResetPage ? (
                 <>
                   <Link 
                     href="/login"
@@ -112,8 +118,9 @@ export default function Header() {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className=" w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
+                        <FiLogOut className="w-4 h-4 mr-2" />
                         Logout
                       </button>
                     </div>

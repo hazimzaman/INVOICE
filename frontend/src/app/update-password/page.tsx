@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function UpdatePassword() {
   const [password, setPassword] = useState('');
@@ -40,14 +41,23 @@ export default function UpdatePassword() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Sign in with new password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: (await supabase.auth.getUser()).data.user?.email || '',
+        password: password
+      });
+
+      if (signInError) throw signInError;
 
       toast.success('Password updated successfully');
-      router.push('/login');
+      router.push('/');
     } catch (error) {
       console.error('Update error:', error);
       toast.error('Failed to update password');
@@ -64,7 +74,7 @@ export default function UpdatePassword() {
             Set New Password
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Please enter your new password below
+            Enter your new password below
           </p>
         </div>
 
@@ -118,6 +128,21 @@ export default function UpdatePassword() {
             )}
           </button>
         </form>
+
+        <div className="mt-4 text-center space-y-2">
+          <Link 
+            href="/login"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500 block"
+          >
+            Back to Login
+          </Link>
+          <Link 
+            href="/signup"
+            className="text-sm font-medium text-gray-600 hover:text-gray-500 block"
+          >
+            Don't have an account? Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );

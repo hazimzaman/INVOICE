@@ -61,18 +61,19 @@ export default function InvoiceForm({ initialData, onSubmit }: InvoiceFormProps)
 
       <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Invoice Number Prefix
+            <span className="text-sm text-gray-500 font-normal ml-2">(Optional)</span>
           </label>
           <input
             type="text"
-            {...register('invoice_prefix', { required: 'Prefix is required' })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            {...register('invoice_prefix')}
+            className="w-full p-2 border border-gray-300 rounded-lg"
             placeholder="e.g., INV-"
           />
-          {errors.invoice_prefix && (
-            <p className="mt-1 text-sm text-red-600">{errors.invoice_prefix.message}</p>
-          )}
+          <p className="mt-1 text-sm text-gray-500">
+            Leave empty if you don't want to use a prefix
+          </p>
         </div>
 
         <div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchInvoices, deleteInvoice } from '@/store/slices/invoicesSlice';
-import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
 import ViewInvoiceModal from './ViewInvoiceModal';
 import EditInvoiceModal from './EditInvoiceModal';
@@ -15,9 +15,15 @@ import { Settings } from '@/types/settings';
 
 interface InvoicesTableProps {
   searchQuery: string;
+  filterType: FilterType;
+  statusFilter: string;
 }
 
-export default function InvoicesTable({ searchQuery }: InvoicesTableProps) {
+type SortOrder = 'asc' | 'desc';
+type SortField = 'date' | 'amount' | 'status';
+type FilterType = 'all' | 'highest_paid' | 'lowest_paid' | 'latest' | 'oldest' | 'status';
+
+export default function InvoicesTable({ searchQuery, filterType, statusFilter }: InvoicesTableProps) {
   const dispatch = useAppDispatch();
   const { invoices, loading } = useAppSelector((state) => state.invoices);
   const { data: settings } = useAppSelector((state) => state.settings);
@@ -27,6 +33,9 @@ export default function InvoicesTable({ searchQuery }: InvoicesTableProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
 
   const defaultSettings: Settings = {
     business_name: '',
@@ -167,10 +176,42 @@ export default function InvoicesTable({ searchQuery }: InvoicesTableProps) {
     dispatch(fetchInvoices());
   }, [dispatch]);
 
-  const filteredInvoices = invoices.filter(invoice => 
-    invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    invoice.client?.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getFilteredAndSortedInvoices = () => {
+    let filtered = [...invoices];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(invoice => 
+        invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        invoice.client?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply filters
+    switch (filterType) {
+      case 'highest_paid':
+        filtered.sort((a, b) => b.total - a.total);
+        break;
+      case 'lowest_paid':
+        filtered.sort((a, b) => a.total - b.total);
+        break;
+      case 'latest':
+        filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        break;
+      case 'status':
+        if (statusFilter !== 'all') {
+          filtered = filtered.filter(invoice => invoice.status === statusFilter);
+        }
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  };
 
   const handleDelete = async (invoice: Invoice) => {
     try {
@@ -188,7 +229,9 @@ export default function InvoicesTable({ searchQuery }: InvoicesTableProps) {
   }
 
   return (
-    <div className=" max-w-[1240px] w-full mx-auto relative overflow-visible z-20">
+    <div className="max-w-[1240px] w-full mx-auto">
+
+
       <table className="min-w-full divide-y divide-gray-200 overflow-visible">
         <thead className="bg-gray-50 overflow-visible">
           <tr className='overflow-visible'>
@@ -213,7 +256,7 @@ export default function InvoicesTable({ searchQuery }: InvoicesTableProps) {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200 overflow-visible ">
-          {filteredInvoices.map((invoice) => (
+          {getFilteredAndSortedInvoices().map((invoice) => (
             <tr 
               key={invoice.id} 
               className="group relative hover:bg-gray-50 overflow-visible"
