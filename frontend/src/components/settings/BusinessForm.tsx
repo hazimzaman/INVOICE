@@ -7,10 +7,11 @@ import { toast } from 'react-hot-toast';
 
 interface BusinessFormProps {
   initialData: Settings | null;
-  onSubmit: (data: Partial<Settings>) => void;
+  onSubmit: (data: any) => void;
+  hideSubmitButton?: boolean;
 }
 
-export default function BusinessForm({ initialData, onSubmit }: BusinessFormProps) {
+export default function BusinessForm({ initialData, onSubmit, hideSubmitButton }: BusinessFormProps) {
   const [formData, setFormData] = useState({
     business_name: initialData?.business_name || '',
     business_logo: initialData?.business_logo || '',
@@ -84,7 +85,7 @@ export default function BusinessForm({ initialData, onSubmit }: BusinessFormProp
         </label>
         <input
           type="text"
-          className="w-full p-2 border border-gray-200 rounded-lg"
+          className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
           value={formData.business_name}
           onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
         />
@@ -106,7 +107,7 @@ export default function BusinessForm({ initialData, onSubmit }: BusinessFormProp
             type="file"
             accept="image/*"
             onChange={handleLogoUpload}
-            className="w-full p-2 border border-gray-200 rounded-lg"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
             disabled={uploading}
           />
         </div>
@@ -117,21 +118,24 @@ export default function BusinessForm({ initialData, onSubmit }: BusinessFormProp
           Business Address
         </label>
         <textarea
-          className="w-full p-2 border border-gray-200 rounded-lg h-24"
+          className="w-full min-h-[110px] p-4 border border-gray-200 rounded-lg"
           value={formData.business_address}
           onChange={(e) => setFormData({ ...formData, business_address: e.target.value })}
         />
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          disabled={uploading}
-        >
-          {uploading ? 'Uploading...' : 'Save Changes'}
-        </button>
-      </div>
+      {/* Only show submit button if hideSubmitButton is false */}
+      {!hideSubmitButton && (
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={uploading}
+          >
+            {uploading ? 'Uploading...' : 'Save Changes'}
+          </button>
+        </div>
+      )}
     </form>
   );
 } 

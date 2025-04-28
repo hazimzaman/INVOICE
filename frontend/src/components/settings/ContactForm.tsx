@@ -69,7 +69,7 @@ export default function ContactForm({ initialData, onSubmit }: ContactFormProps)
           <input
             type="text"
             {...register('contact_name', { required: 'Contact name is required' })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.contact_name && (
             <p className="mt-1 text-sm text-red-600">{errors.contact_name.message}</p>
@@ -89,7 +89,7 @@ export default function ContactForm({ initialData, onSubmit }: ContactFormProps)
                 message: 'Invalid email address'
               }
             })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.contact_email && (
             <p className="mt-1 text-sm text-red-600">{errors.contact_email.message}</p>
@@ -103,7 +103,7 @@ export default function ContactForm({ initialData, onSubmit }: ContactFormProps)
           <input
             type="tel"
             {...register('contact_phone', { required: 'Contact phone is required' })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.contact_phone && (
             <p className="mt-1 text-sm text-red-600">{errors.contact_phone.message}</p>
@@ -123,7 +123,7 @@ export default function ContactForm({ initialData, onSubmit }: ContactFormProps)
                 message: 'Invalid email address'
               }
             })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.wise_email && (
             <p className="mt-1 text-sm text-red-600">{errors.wise_email.message}</p>

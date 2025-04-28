@@ -67,8 +67,8 @@ export default function InvoiceForm({ initialData, onSubmit }: InvoiceFormProps)
           </label>
           <input
             type="text"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
             {...register('invoice_prefix')}
-            className="w-full p-2 border border-gray-300 rounded-lg"
             placeholder="e.g., INV-"
           />
           <p className="mt-1 text-sm text-gray-500">
@@ -83,6 +83,7 @@ export default function InvoiceForm({ initialData, onSubmit }: InvoiceFormProps)
           <input
             type="number"
             min="1"
+            className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
             {...register('current_invoice_number', { 
               required: 'Invoice number is required',
               min: {
@@ -90,7 +91,6 @@ export default function InvoiceForm({ initialData, onSubmit }: InvoiceFormProps)
                 message: 'Number must be greater than 0'
               }
             })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.current_invoice_number && (
             <p className="mt-1 text-sm text-red-600">{errors.current_invoice_number.message}</p>
@@ -105,9 +105,8 @@ export default function InvoiceForm({ initialData, onSubmit }: InvoiceFormProps)
             Invoice Footer Note
           </label>
           <textarea
+            className="w-full min-h-[110px] p-4 border border-gray-200 rounded-lg"
             {...register('footer_note')}
-            rows={4}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Enter any additional notes to appear at the bottom of invoices"
           />
         </div>

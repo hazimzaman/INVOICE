@@ -45,9 +45,11 @@ export default function EmailSettingsForm({ initialData, onSubmit }: EmailSettin
           </div>
         </label>
         <textarea
-          className="w-full p-2 border border-gray-200 rounded-lg h-48"
+          className="w-full min-h-[110px] p-4 border border-gray-200 rounded-lg"
           value={formData.email_template}
           onChange={(e) => setFormData({ ...formData, email_template: e.target.value })}
+          placeholder="Enter your email template"
+          rows={4}
         />
       </div>
 
@@ -57,19 +59,10 @@ export default function EmailSettingsForm({ initialData, onSubmit }: EmailSettin
         </label>
         <input
           type="text"
-          className="w-full p-2 border border-gray-200 rounded-lg"
+          className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
           value={formData.email_subject}
           onChange={(e) => setFormData({ ...formData, email_subject: e.target.value })}
         />
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Save Changes
-        </button>
       </div>
     </form>
   );
