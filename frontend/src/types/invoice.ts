@@ -17,7 +17,7 @@ export interface Invoice {
   client_id: string;
   invoice_number: string;
   date: string;
-  due_date: string;
+  due_date?: string;
   status: 'pending' | 'paid' | 'overdue';
   subtotal: number;
   total: number;

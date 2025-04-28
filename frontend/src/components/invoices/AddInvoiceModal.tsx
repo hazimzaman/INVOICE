@@ -37,7 +37,6 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   const [formData, setFormData] = useState({
     client_id: '',
     date: new Date().toISOString().split('T')[0],
-    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     notes: '',
     items: [] as InvoiceItem[]
   });
@@ -56,8 +55,14 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
     setFormData(prev => ({ ...prev, client_id: clientId }));
   };
 
+  const isItemValid = () => {
+    return newItem.name.trim() !== '' && 
+           newItem.description.trim() !== '' && 
+           newItem.amount > 0;
+  };
+
   const addItem = () => {
-    if (!newItem.name || newItem.amount <= 0) return;
+    if (!isItemValid()) return;
     
     setFormData(prev => ({
       ...prev,
@@ -105,17 +110,24 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
         return;
       }
 
-      if (formData.items.length === 0) {
+      // Add current item if valid
+      const allItems = [...formData.items];
+      if (isItemValid()) {
+        allItems.push(newItem);
+      }
+
+      if (allItems.length === 0) {
         toast.error('Please add at least one item');
         return;
       }
 
       const invoiceData = {
         ...formData,
+        items: allItems,
         invoice_number: generateInvoiceNumber(),
         status: 'pending' as const,
-        subtotal: calculateTotal(),
-        total: calculateTotal()
+        subtotal: calculateTotal() + (isItemValid() ? newItem.amount : 0),
+        total: calculateTotal() + (isItemValid() ? newItem.amount : 0)
       };
 
       await dispatch(addInvoice(invoiceData)).unwrap();
@@ -174,7 +186,7 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
               {/* Invoice Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium mb-2">Date</label>
+                  <label className="block font-medium mb-2">Datee</label>
                   <input
                     type="date"
                     value={formData.date}
@@ -188,7 +200,21 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
 
               {/* Items Section */}
               <div className="max-h-[300px] overflow-y-auto">
-                <h3 className="font-medium mb-2">Items</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium">Items</h3>
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    disabled={!isItemValid()}
+                    className={`px-4 py-2 rounded text-sm ${
+                      isItemValid() 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Add Item
+                  </button>
+                </div>
                 
                 {/* Existing Items */}
                 {formData.items.map((item, index) => (
@@ -206,38 +232,29 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
                   </div>
                 ))}
 
-                {/* Add New Item */}
+                {/* New Item Form */}
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   <input
                     type="text"
                     placeholder="Item name"
                     value={newItem.name}
                     onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-                    className="p-2 border border-[var(--color-gray-300)] rounded"
+                    className="w-full h-[55px] px-4 border border-[var(--color-gray-300)] rounded"
                   />
                   <input
                     type="text"
                     placeholder="Description"
                     value={newItem.description}
                     onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                    className="p-2 border border-[var(--color-gray-300)] rounded"
+                    className="w-full h-[55px] px-4 border border-[var(--color-gray-300)] rounded"
                   />
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      placeholder="Amount"
-                      value={newItem.amount || ''}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                      className="p-2 border  border-[var(--color-gray-300)] rounded w-full"
-                    />
-                    <button
-                      type="button"
-                      onClick={addItem}
-                      className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      <FiPlus />
-                    </button>
-                  </div>
+                  <input
+                    type="number"
+                    placeholder="Amount"
+                    value={newItem.amount || ''}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                    className="w-full h-[55px] px-4 border border-[var(--color-gray-300)] rounded"
+                  />
                 </div>
               </div>
 

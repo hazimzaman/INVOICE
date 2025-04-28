@@ -12,48 +12,57 @@ const ViewClientModal: React.FC<ViewClientModalProps> = ({ isOpen, onClose, clie
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 shadow-md  backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">{client.name}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <span className="sr-only">Close</span>
-            ×
-          </button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.12)] max-w-lg w-full transform transition-all">
+        <div className="p-6 border-b">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">{client.name}</h2>
+            <button 
+              onClick={onClose} 
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-medium text-gray-900">Company Details</h3>
-            <p className="text-gray-600">{client.company || 'N/A'}</p>
-            <p className="text-gray-600">Currency: {client.currency || '$'}</p>
+        <div className="p-6 space-y-6">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Company Details</h3>
+            <p className="text-gray-700">{client.company || 'N/A'}</p>
+            <p className="text-gray-700">Currency: {client.currency || '$'}</p>
           </div>
 
-          <div>
-            <h3 className="font-medium text-gray-900">Contact Information</h3>
-            <p className="flex items-center gap-2">
-              <span className="text-gray-600">📧</span>
-              <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
-                {client.email}
-              </a>
-            </p>
-            {client.phone && (
-              <p className="flex items-center gap-2">
-                <span className="text-gray-600">📞</span>
-                <span>{client.phone}</span>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-3">Contact Information</h3>
+            <div className="space-y-2">
+              <p className="flex items-center gap-3 text-gray-700">
+                <FiMail className="w-5 h-5 text-blue-600" />
+                <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                  {client.email}
+                </a>
               </p>
-            )}
-            {client.address && (
-              <p className="flex items-center gap-2">
-                <span className="text-gray-600">📍</span>
-                <span>{client.address}</span>
-              </p>
-            )}
+              {client.phone && (
+                <p className="flex items-center gap-3 text-gray-700">
+                  <FiPhone className="w-5 h-5 text-green-600" />
+                  <span>{client.phone}</span>
+                </p>
+              )}
+              {client.address && (
+                <p className="flex items-center gap-3 text-gray-700">
+                  <FiMapPin className="w-5 h-5 text-red-600" />
+                  <span>{client.address}</span>
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="text-sm text-gray-500">
-            <p>Created: {formatDate(client.created_at)}</p>
-            <p>Last Updated: {formatDate(client.updated_at)}</p>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Timestamps</h3>
+            <div className="space-y-1 text-sm text-gray-600">
+              <p>Created: {client.created_at ? formatDate(client.created_at) : 'N/A'}</p>
+              <p>Last Updated: {client.updated_at ? formatDate(client.updated_at) : 'N/A'}</p>
+            </div>
           </div>
         </div>
       </div>
