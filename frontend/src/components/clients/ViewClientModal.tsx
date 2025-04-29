@@ -14,7 +14,7 @@ const ViewClientModal: React.FC<ViewClientModalProps> = ({ isOpen, onClose, clie
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.12)] max-w-lg w-full transform transition-all">
-        <div className="p-6 border-b">
+        <div className="p-6 ">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">{client.name}</h2>
             <button 

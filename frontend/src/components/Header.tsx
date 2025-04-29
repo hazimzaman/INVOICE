@@ -7,7 +7,7 @@ import { useAppSelector } from '@/store/hooks';
 import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
-import { FiMenu, FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
+import { FiMenu, FiUser, FiSettings, FiLogOut, FiX } from 'react-icons/fi';
 import { useState } from 'react';
 
 
@@ -17,6 +17,7 @@ export default function Header() {
   const { data: settings } = useAppSelector<{ data: Settings | null }>((state) => state.settings);
   const { setLoading } = useLoading();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -47,9 +48,9 @@ export default function Header() {
     <header className="bg-white shadow-md w-full">
       <div className="container mx-auto max-w-[1240px] px-4">
         <nav className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 gap-5">
-              <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold">
+          <div className="flex items-center gap-4 justify-between">
+            <div className="flex items-center space-x-4 gap-5 w-full justify-between md:justify-start">
+              <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold m-0">
                 <Image 
                   src="/logo.png" 
                   alt="Logo" 
@@ -58,10 +59,10 @@ export default function Header() {
                   className="w-auto h-auto"
                 />
               </Link>
-              
-              {/* Only show nav links if user is logged in */}
+
+              {/* Desktop Navigation - Now shows in logo div on md screens */}
               {user && !isPasswordResetPage && (
-                <div className="hidden md:flex items-center space-x-4">
+                <nav className="hidden md:flex items-center space-x-4">
                   <Link href="/invoices" className="text-gray-800 hover:text-gray-600">
                     Invoices
                   </Link>
@@ -71,12 +72,24 @@ export default function Header() {
                   <Link href="/reports" className="text-gray-800 hover:text-gray-600">
                     Reports
                   </Link>
+                </nav>
+              )}
+              
+              {/* Mobile Menu Button */}
+              {user && !isPasswordResetPage && (
+                <div className="flex items-center m-0 md:hidden">
+                  <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className=""
+                  >
+                    <FiMenu className="w-6 h-6" />
+                  </button>
                 </div>
               )}
             </div>
             
             {/* Auth buttons section */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 w-auto">
               {!user ? (
                 <>
                   <Link 
@@ -98,7 +111,7 @@ export default function Header() {
                     onClick={toggleDropdown}
                     className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none cursor-pointer"
                   >
-                    <FiUser className="w-5 h-5" />
+                    <FiUser className="w-5 h-5 m-0" />
                     <span className="hidden sm:inline">{userName}</span>
                   </button>
 
@@ -132,13 +145,67 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Overlay */}
-      {isDropdownOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsDropdownOpen(false)}
-        />
-      )}
+      {/* Mobile Menu Sidebar */}
+      <div 
+        className={`fixed inset-0 bg-black transition-opacity duration-300 z-40
+          ${isMobileMenuOpen ? 'opacity-50 visible' : 'opacity-0 invisible'}
+        `}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+      
+      {/* Sidebar */}
+      <div 
+        className={`
+          fixed top-0 left-0 h-full bg-white shadow-lg z-50
+          transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          w-60
+        `}
+      >
+        <div className="p-4">
+          {/* Close Button */}
+          <div className="flex justify-between items-center mb-8">
+            <Image 
+              src="/logo.png" 
+              alt="Logo" 
+              width={120} 
+              height={35}
+              className="w-auto h-auto"
+            />
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Mobile Navigation Links */}
+          <div className="flex flex-col space-y-4">
+            <Link 
+              href="/invoices" 
+              className="text-gray-800 hover:text-gray-600 py-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Invoices
+            </Link>
+            <Link 
+              href="/clients" 
+              className="text-gray-800 hover:text-gray-600 py-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Clients
+            </Link>
+            <Link 
+              href="/reports" 
+              className="text-gray-800 hover:text-gray-600 py-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Reports
+            </Link>
+          </div>
+        </div>
+      </div>
     </header>
   );
 } 

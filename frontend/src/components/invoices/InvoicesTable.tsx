@@ -233,7 +233,7 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
   }
 
   return (
-    <div className="max-w-[1240px] w-full mx-auto">
+    <div className=" w-full ">
 
 
       <table className="min-w-full divide-y divide-gray-200 overflow-visible">
