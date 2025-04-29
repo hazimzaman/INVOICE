@@ -67,13 +67,13 @@ export default function ClientsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+      <div className="flex flex-col  mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Clientss</h1>
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
         >
-          Add Client
+          Add Clientt
         </button>
       </div>
 

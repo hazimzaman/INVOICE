@@ -34,12 +34,13 @@ export default function InvoicesPage() {
   }, [dispatch, router]);
 
   return (
-    <div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
+  <section className='w-full'>
+<div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div className="flex justify-between items-center   ">
+      <div className="flex flex-col justify-between items-center gap-2 sm:flex-row ">
         <h1 className="text-2xl font-bold">Invoices</h1>
         
-        <div className="flex gap-4">
+        <div className="flex gap-2 flex-col sm:flex-row">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -54,7 +55,8 @@ export default function InvoicesPage() {
             />
           </div>
 
-          {/* Filters Button */}
+         <div className='flex gap-2 xs:flex-col xs:items-end xs:justify-end xs:w-full'>
+                {/* Filters Button */}
           <div className="relative">
             <button
               onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
@@ -177,6 +179,8 @@ export default function InvoicesPage() {
             <FiPlus className="w-5 h-5" />
             <span>Add Invoice</span>
           </button>
+         </div>
+          
         </div>
       </div>
 
@@ -193,5 +197,7 @@ export default function InvoicesPage() {
         onClose={() => setIsAddModalOpen(false)}
       />
     </div>
+  </section>
+    
   );
 } 

@@ -1,7 +1,9 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchInvoices, deleteInvoice } from '@/store/slices/invoicesSlice';
-import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle, FiSend } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle, FiSend, FiMoreVertical } from 'react-icons/fi';
 import { Invoice } from '@/types/invoice';
 import ViewInvoiceModal from './ViewInvoiceModal';
 import EditInvoiceModal from './EditInvoiceModal';
@@ -228,187 +230,385 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
     }
   };
 
+  const toggleDropdown = (invoiceId: string) => {
+    setOpenDropdownId(openDropdownId === invoiceId ? null : invoiceId);
+  };
+
   if (loading) {
     return <div className="text-center py-4">Loading...</div>;
   }
 
   return (
-    <div className=" w-full ">
-
-
-      <table className="min-w-full divide-y divide-gray-200 overflow-visible">
-        <thead className="bg-gray-50 overflow-visible">
-          <tr className='overflow-visible'>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
-              Invoice #
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Client
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Total
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200 overflow-visible ">
-          {getFilteredAndSortedInvoices().map((invoice) => (
-            <tr 
-              key={invoice.id} 
-              className="group relative hover:bg-gray-50 overflow-visible"
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                {invoice.invoice_number}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {invoice.client?.name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="relative inline-block text-left">
-                  <button
-                    onClick={() => setOpenDropdownId(openDropdownId === `date-${invoice.id}` ? null : `date-${invoice.id}`)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
-                  >
-                    <FiCalendar className="w-4 h-4" />
-                    <span>{new Date(invoice.date).toLocaleDateString()}</span>
-                    <FiChevronDown className="w-4 h-4" />
-                  </button>
-                  
-                  {openDropdownId === `date-${invoice.id}` && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-30"
-                        onClick={() => setOpenDropdownId(null)}
-                      />
-                      <div 
-                        className="absolute right-0 z-50 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                        style={{ transform: 'translateY(0%)' }}
-                      >
-                        <input
-                          type="date"
-                          defaultValue={invoice.date.split('T')[0]}
-                          onChange={(e) => handleDateUpdate(invoice.id, e.target.value)}
-                          className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                ${invoice.total.toFixed(2)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="relative inline-block text-left">
-                  <button
-                    onClick={() => setOpenDropdownId(openDropdownId === `status-${invoice.id}` ? null : `status-${invoice.id}`)}
-                    className={`inline-flex items-center space-x-2 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      invoice.status === 'paid'
-                        ? 'bg-green-100 text-green-800'
-                        : invoice.status === 'overdue'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    <span>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
-                    <FiChevronDown className="w-3 h-3" />
-                  </button>
-                  
-                  {openDropdownId === `status-${invoice.id}` && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-30"
-                        onClick={() => setOpenDropdownId(null)}
-                      />
-                      <div 
-                        className="absolute right-[-4] z-50 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                        style={{ transform: 'translateY(0%)' }}
-                      >
-                        <div className="py-1">
-                          {['pending', 'paid', 'overdue'].map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => handleStatusUpdate(invoice.id, status)}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end">
-                <button
-                  onClick={() => {
-                    setSelectedInvoice(invoice);
-                    setIsViewModalOpen(true);
-                  }}
-                  className="text-blue-600 hover:text-blue-900 mx-2"
-                  title="View"
-                >
-                  <FiEye className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedInvoice(invoice);
-                    handleDownloadPDF(invoice);
-                  }}
-                  className="text-gray-600 hover:text-gray-900 mx-2"
-                  title="Download PDF"
-                >
-                  <FiDownload className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedInvoice(invoice);
-                    handleSendEmail(invoice);
-                  }}
-                  disabled={loadingStates[`send_${invoice.id}`]}
-                  className={`text-gray-600 hover:text-gray-900 mx-2 ${loadingStates[`send_${invoice.id}`] ? 'animate-spin' : ''}`}
-                  title="Send Email"
-                >
-                  {loadingStates[`send_${invoice.id}`] ? (
-                    <FiSend className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <FiMail className="w-5 h-5" />
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedInvoice(invoice);
-                    setIsEditModalOpen(true);
-                  }}
-                  className="text-indigo-600 hover:text-indigo-900 mx-2"
-                  title="Edit"
-                >
-                  <FiEdit2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedInvoice(invoice);
-                    setIsDeleteModalOpen(true);
-                  }}
-                  className="text-red-600 hover:text-red-900 mx-2"
-                  title="Delete"
-                >
-                  <FiTrash2 className="w-5 h-5" />
-                </button>
-              </td>
+    <>
+      {/* Desktop Table - Hide on small screens */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr className='overflow-visible'>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
+                Invoice #
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Client
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell  ">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell ">
+                Total
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200 overflow-visible">
+            {getFilteredAndSortedInvoices().map((invoice) => (
+              <tr key={invoice.id} className="group relative hover:bg-gray-50 overflow-visible">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {invoice.invoice_number}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {invoice.client?.name}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell  ">
+                  <div className="relative inline-block text-left">
+                    <button
+                      onClick={() => setOpenDropdownId(openDropdownId === `date-${invoice.id}` ? null : `date-${invoice.id}`)}
+                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+                    >
+                      <FiCalendar className="w-4 h-4" />
+                      <span>{new Date(invoice.date).toLocaleDateString()}</span>
+                      <FiChevronDown className="w-4 h-4" />
+                    </button>
+                    
+                    {openDropdownId === `date-${invoice.id}` && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-30"
+                          onClick={() => setOpenDropdownId(null)}
+                        />
+                        <div 
+                          className="absolute right-0 z-50 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                          style={{ transform: 'translateY(0%)' }}
+                        >
+                          <input
+                            type="date"
+                            defaultValue={invoice.date.split('T')[0]}
+                            onChange={(e) => handleDateUpdate(invoice.id, e.target.value)}
+                            className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                  ${invoice.total.toFixed(2)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap ">
+                  <div className="relative inline-block text-left">
+                    <button
+                      onClick={() => setOpenDropdownId(openDropdownId === `status-${invoice.id}` ? null : `status-${invoice.id}`)}
+                      className={`inline-flex items-center space-x-2 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        invoice.status === 'paid'
+                          ? 'bg-green-100 text-green-800'
+                          : invoice.status === 'overdue'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      <span>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
+                      <FiChevronDown className="w-3 h-3" />
+                    </button>
+                    
+                    {openDropdownId === `status-${invoice.id}` && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-30"
+                          onClick={() => setOpenDropdownId(null)}
+                        />
+                        <div 
+                          className="absolute right-[-4] z-50 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                          style={{ transform: 'translateY(0%)' }}
+                        >
+                          <div className="py-1">
+                            {['pending', 'paid', 'overdue'].map((status) => (
+                              <button
+                                key={status}
+                                onClick={() => handleStatusUpdate(invoice.id, status)}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  {/* Show all actions on large screens */}
+                  <div className="hidden lg:flex items-center justify-end">
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setIsViewModalOpen(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 mx-2"
+                      title="View"
+                    >
+                      <FiEye className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        handleDownloadPDF(invoice);
+                      }}
+                      className="text-gray-600 hover:text-gray-900 mx-2"
+                      title="Download PDF"
+                    >
+                      <FiDownload className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        handleSendEmail(invoice);
+                      }}
+                      disabled={loadingStates[`send_${invoice.id}`]}
+                      className={`text-gray-600 hover:text-gray-900 mx-2 ${loadingStates[`send_${invoice.id}`] ? 'animate-spin' : ''}`}
+                      title="Send Email"
+                    >
+                      {loadingStates[`send_${invoice.id}`] ? (
+                        <FiSend className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <FiMail className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setIsEditModalOpen(true);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900 mx-2"
+                      title="Edit"
+                    >
+                      <FiEdit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      className="text-red-600 hover:text-red-900 mx-2"
+                      title="Delete"
+                    >
+                      <FiTrash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Show three dots menu on smaller screens */}
+                  <div className="lg:hidden relative">
+                    <button 
+                      onClick={() => toggleDropdown(invoice.id)}
+                      className="p-2 hover:bg-gray-100 rounded-full"
+                    >
+                      <FiMoreVertical className="w-5 h-5 text-gray-500" />
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {openDropdownId === invoice.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-30"
+                          onClick={() => setOpenDropdownId(null)}
+                        />
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-40 border border-gray-200">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setIsViewModalOpen(true);
+                                toggleDropdown(invoice.id);
+                              }}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                            >
+                              <FiEye className="mr-3 w-4 h-4" />
+                              View
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDownloadPDF(invoice);
+                                toggleDropdown(invoice.id);
+                              }}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                            >
+                              <FiDownload className="mr-3 w-4 h-4" />
+                              Download PDF
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleSendEmail(invoice);
+                                toggleDropdown(invoice.id);
+                              }}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                            >
+                              {loadingStates[`send_${invoice.id}`] ? (
+                                <FiSend className="mr-3 w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiMail className="mr-3 w-4 h-4" />
+                              )}
+                              Send Email
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setIsEditModalOpen(true);
+                                toggleDropdown(invoice.id);
+                              }}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                            >
+                              <FiEdit2 className="mr-3 w-4 h-4" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setIsDeleteModalOpen(true);
+                                toggleDropdown(invoice.id);
+                              }}
+                              className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
+                            >
+                              <FiTrash2 className="mr-3 w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Cards - Show only on small screens */}
+      <div className="sm:hidden space-y-4">
+        {invoices.map((invoice) => (
+          <div key={invoice.id} className="bg-white rounded-lg shadow p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</p>
+                <p className="text-gray-600">{invoice.client?.name}</p>
+              </div>
+              
+              {/* Three dots menu */}
+              <div className="relative">
+                <button 
+                  onClick={() => toggleDropdown(invoice.id)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <FiMoreVertical className="w-5 h-5 text-gray-500" />
+                </button>
+
+                {/* Dropdown menu */}
+                {openDropdownId === invoice.id && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setIsViewModalOpen(true);
+                          toggleDropdown(invoice.id);
+                        }}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                      >
+                        <FiEye className="mr-3 w-4 h-4" />
+                        View Invoice
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSendEmail(invoice);
+                          toggleDropdown(invoice.id);
+                        }}
+                        disabled={loadingStates[`send_${invoice.id}`]}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                      >
+                        {loadingStates[`send_${invoice.id}`] ? (
+                          <FiSend className="mr-3 w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiMail className="mr-3 w-4 h-4" />
+                        )}
+                        Send Email
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setIsEditModalOpen(true);
+                          toggleDropdown(invoice.id);
+                        }}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                      >
+                        <FiEdit2 className="mr-3 w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          handleDownloadPDF(invoice);
+                          toggleDropdown(invoice.id);
+                        }}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                      >
+                        <FiDownload className="mr-3 w-4 h-4" />
+                        Download
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setIsDeleteModalOpen(true);
+                          toggleDropdown(invoice.id);
+                        }}
+                        className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
+                      >
+                        <FiTrash2 className="mr-3 w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <div className="flex gap-2">
+                <span className="text-gray-500">Amount:</span>
+                <span className="font-medium">€{invoice.total.toFixed(2)}</span>
+              </div>
+              <div className="flex gap-2 ">
+                <span className="text-gray-500">Due Date:</span>
+                <span>{new Date(invoice.date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex gap-2 ">
+                <span className="text-gray-500">Status:</span>
+                <span className={`px-2 py-1 rounded-full text-xs 
+                  ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 
+                    invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                    'bg-red-100 text-red-800'}`}
+                >
+                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Modals */}
       {selectedInvoice && (
@@ -441,6 +641,6 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
           />
         </>
       )}
-    </div>
+    </>
   );
 } 

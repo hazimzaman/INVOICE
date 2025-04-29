@@ -70,7 +70,7 @@ export default function ReportsPage() {
       const paidInvoices = invoices.filter(inv => inv.status === 'paid');
       const pendingInvoices = invoices.filter(inv => inv.status === 'pending');
       const overdueInvoices = invoices.filter(inv => 
-        inv.status !== 'paid' && new Date(inv.due_date) < now
+        inv.status === 'overdue'
       );
       
       setStats({
@@ -169,9 +169,9 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[1240px]">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-2 sm:flex-row items-center justify-between mb-6 ">
         <h1 className="text-2xl font-bold">Reports & Analytics</h1>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {(['today', 'weekly', 'monthly', 'yearly'] as TimePeriod[]).map((period) => (
             <button
               key={period}
@@ -271,7 +271,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Top Clients Bar Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 ">
           <h2 className="text-xl font-semibold mb-4">Top Clients by Revenue</h2>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -322,9 +322,9 @@ export default function ReportsPage() {
               <tr className="border-b">
                 <th className="text-left py-3">Invoice #</th>
                 <th className="text-left py-3">Client</th>
-                <th className="text-left py-3">Amount</th>
+                <th className="text-left py-3 hidden sm:table-cell">Amount</th>
                 <th className="text-left py-3">Status</th>
-                <th className="text-left py-3">Date</th>
+                <th className="text-left py-3 hidden sm:table-cell">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -332,7 +332,7 @@ export default function ReportsPage() {
                 <tr key={invoice.id} className="border-b">
                   <td className="py-3">{invoice.invoice_number}</td>
                   <td className="py-3">{invoice.client?.name}</td>
-                  <td className="py-3">${invoice.total.toFixed(2)}</td>
+                  <td className="py-3 hidden sm:table-cell">${invoice.total.toFixed(2)}</td>
                   <td className="py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       invoice.status === 'paid' 
@@ -342,7 +342,7 @@ export default function ReportsPage() {
                       {invoice.status}
                     </span>
                   </td>
-                  <td className="py-3">{new Date(invoice.date).toLocaleDateString()}</td>
+                  <td className="py-3 hidden sm:table-cell">{new Date(invoice.date).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -364,7 +364,7 @@ interface StatCardProps {
 
 function StatCard({ icon, title, value, subtitle, color, iconColor }: StatCardProps) {
   return (
-    <div className={`rounded-lg shadow-lg p-6 ${color} transition-transform hover:scale-105`}>
+    <div className={` rounded-lg shadow-lg p-6 ${color} transition-transform hover:scale-105 `}>
       <div className="flex items-center mb-4">
         <div className={`${iconColor} p-3 rounded-full bg-white/80 mr-3`}>
           {icon}
