@@ -10,6 +10,8 @@ export default function LoginPage() {
 
   return (
     <AuthGuard>
+      <section className='flex flex-col items-center justify-center h-screen'>
+
       <div>
         {message && (
           <div className="max-w-md mx-auto mt-4 p-4 bg-blue-100 text-blue-700 rounded-lg">
@@ -18,6 +20,8 @@ export default function LoginPage() {
         )}
         <LoginForm />
       </div>
+      </section>
+      
     </AuthGuard>
   );
 } 

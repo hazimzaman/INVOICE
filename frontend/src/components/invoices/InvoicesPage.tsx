@@ -73,7 +73,7 @@ export default function InvoicesPage() {
                   className="fixed inset-0 z-30"
                   onClick={() => setIsFilterDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-40">
+                <div className="absolute left-[-9%] mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-40">
                   <div className="p-4 space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

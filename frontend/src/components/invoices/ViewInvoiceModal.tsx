@@ -166,15 +166,27 @@ Best regards,
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-3xl w-full bg-white rounded-xl shadow-lg">
+        <Dialog.Panel className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <Dialog.Title className="text-xl font-bold">Invoice Details</Dialog.Title>
+              <Dialog.Title className="text-xl font-bold">
+                Invoice Details
+              </Dialog.Title>
             </div>
 
             <div className="space-y-6">

@@ -7,9 +7,9 @@ import { useAppSelector } from '@/store/hooks';
 import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
-import { FiMenu, FiUser, FiSettings, FiLogOut, FiX } from 'react-icons/fi';
+import { FiMenu, FiUser, FiSettings, FiLogOut, FiX, FiMoreVertical } from 'react-icons/fi';
 import { useState } from 'react';
-
+import { FaPowerOff } from "react-icons/fa6";
 
 export default function Header() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function Header() {
   const { setLoading } = useLoading();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthDropdownOpen, setIsAuthDropdownOpen] = useState(false);
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -56,7 +57,7 @@ export default function Header() {
                   alt="Logo" 
                   width={180} 
                   height={50}
-                  className="w-auto h-auto"
+                  className="min-w-[120px] sm:min-w-[180px] w-full sm:min-h-[50px]  h-full"
                 />
               </Link>
 
@@ -89,21 +90,61 @@ export default function Header() {
             </div>
             
             {/* Auth buttons section */}
-            <div className="flex items-center space-x-4 w-auto">
+            <div className="flex items-center flex-row gap-4 space-x-4 w-auto">
               {!user ? (
                 <>
-                  <Link 
-                    href="/login"
-                    className="text-gray-800 hover:text-gray-600"
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    href="/signup"
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-                  >
-                    Sign Up
-                  </Link>
+                  {/* Desktop Auth Buttons */}
+                  <div className="hidden sm:flex items-center gap-4">
+                    <Link 
+                      href="/login"
+                      className="text-gray-800 hover:text-gray-600"
+                    >
+                      Login
+                    </Link>
+                    <Link 
+                      href="/signup"
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors m-0 min-w-24"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+
+                  {/* Mobile Auth Menu */}
+                  <div className="sm:hidden relative">
+                    <button 
+                      onClick={() => setIsAuthDropdownOpen(!isAuthDropdownOpen)}
+                      className="p-2 hover:bg-gray-100 rounded-full"
+                    >
+                      <FiMoreVertical className="w-5 h-5 text-gray-500" />
+                    </button>
+
+                    {isAuthDropdownOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-30"
+                          onClick={() => setIsAuthDropdownOpen(false)}
+                        />
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-40 border border-gray-200">
+                          <div className="py-1">
+                            <Link
+                              href="/login"
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                              onClick={() => setIsAuthDropdownOpen(false)}
+                            >
+                              Login
+                            </Link>
+                            <Link
+                              href="/signup"
+                              className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 w-full"
+                              onClick={() => setIsAuthDropdownOpen(false)}
+                            >
+                              Sign Up
+                            </Link>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className="relative">

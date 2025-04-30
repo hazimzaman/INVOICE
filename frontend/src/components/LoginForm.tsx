@@ -80,7 +80,7 @@ export default function LoginForm() {
           Sign up
         </Link>
       </p>
-     <div >
+     <div className='w-full flex justify-center mt-2' >
      <Link 
         href="/forgot-password" 
         className="text-sm text-blue-500 hover:text-blue-600"
