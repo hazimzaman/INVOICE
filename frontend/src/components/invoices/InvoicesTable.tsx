@@ -517,93 +517,155 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
                   <FiMoreVertical className="w-5 h-5 text-gray-500" />
                 </button>
 
-                {/* Dropdown menu */}
                 {openDropdownId === invoice.id && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsViewModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiEye className="mr-3 w-4 h-4" />
-                        View Invoice
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleSendEmail(invoice);
-                          toggleDropdown(invoice.id);
-                        }}
-                        disabled={loadingStates[`send_${invoice.id}`]}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        {loadingStates[`send_${invoice.id}`] ? (
-                          <FiSend className="mr-3 w-4 h-4 animate-spin" />
-                        ) : (
-                          <FiMail className="mr-3 w-4 h-4" />
-                        )}
-                        Send Email
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsEditModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiEdit2 className="mr-3 w-4 h-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          handleDownloadPDF(invoice);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiDownload className="mr-3 w-4 h-4" />
-                        Download
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsDeleteModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
-                      >
-                        <FiTrash2 className="mr-3 w-4 h-4" />
-                        Delete
-                      </button>
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30"
+                      onClick={() => setOpenDropdownId(null)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-40 border border-gray-200">
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setIsViewModalOpen(true);
+                            toggleDropdown(invoice.id);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                        >
+                          <FiEye className="mr-3 w-4 h-4" />
+                          View Invoice
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleSendEmail(invoice);
+                            toggleDropdown(invoice.id);
+                          }}
+                          disabled={loadingStates[`send_${invoice.id}`]}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                        >
+                          {loadingStates[`send_${invoice.id}`] ? (
+                            <FiSend className="mr-3 w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiMail className="mr-3 w-4 h-4" />
+                          )}
+                          Send Email
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setIsEditModalOpen(true);
+                            toggleDropdown(invoice.id);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                        >
+                          <FiEdit2 className="mr-3 w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDownloadPDF(invoice);
+                            toggleDropdown(invoice.id);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                        >
+                          <FiDownload className="mr-3 w-4 h-4" />
+                          Download
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setIsDeleteModalOpen(true);
+                            toggleDropdown(invoice.id);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
+                        >
+                          <FiTrash2 className="mr-3 w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
 
             <div className="mt-4 space-y-2">
-              <div className="flex gap-2">
+              <div className="flex justify-between items-center">
                 <span className="text-gray-500">Amount:</span>
                 <span className="font-medium">€{invoice.total.toFixed(2)}</span>
               </div>
-              <div className="flex gap-2 ">
-                <span className="text-gray-500">Due Date:</span>
-                <span>{new Date(invoice.date).toLocaleDateString()}</span>
+              
+              {/* Editable Date */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Date:</span>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenDropdownId(openDropdownId === `date-${invoice.id}` ? null : `date-${invoice.id}`)}
+                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+                  >
+                    <FiCalendar className="w-4 h-4" />
+                    <span>{new Date(invoice.date).toLocaleDateString()}</span>
+                    <FiChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {openDropdownId === `date-${invoice.id}` && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-30"
+                        onClick={() => setOpenDropdownId(null)}
+                      />
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-40 border border-gray-200">
+                        <input
+                          type="date"
+                          defaultValue={invoice.date.split('T')[0]}
+                          onChange={(e) => handleDateUpdate(invoice.id, e.target.value)}
+                          className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2 ">
+
+              {/* Editable Status */}
+              <div className="flex justify-between items-center">
                 <span className="text-gray-500">Status:</span>
-                <span className={`px-2 py-1 rounded-full text-xs 
-                  ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 
-                    invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                    'bg-red-100 text-red-800'}`}
-                >
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenDropdownId(openDropdownId === `status-${invoice.id}` ? null : `status-${invoice.id}`)}
+                    className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                      invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    <span>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
+                    <FiChevronDown className="w-3 h-3" />
+                  </button>
+                  
+                  {openDropdownId === `status-${invoice.id}` && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-30"
+                        onClick={() => setOpenDropdownId(null)}
+                      />
+                      <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-40 border border-gray-200">
+                        <div className="py-1">
+                          {['pending', 'paid', 'overdue'].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => handleStatusUpdate(invoice.id, status)}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>

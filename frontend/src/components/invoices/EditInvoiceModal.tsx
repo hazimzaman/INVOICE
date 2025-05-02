@@ -134,8 +134,8 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
               </div>
 
               {/* Invoice Details */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
+              <div className="grid mb-2  gap-4 xs:grid-cols-2 sm:grid-cols-3">
+                <div className='flex flex-col justify-between'>
                   <label className="block font-medium mb-2">Invoice Number</label>
                   <input
                     type="text"
@@ -145,7 +145,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                     required
                   />
                 </div>
-                <div>
+                <div className='flex flex-col justify-between'>
                   <label className="block font-medium mb-2">Status</label>
                   <select
                     value={formData.status}
@@ -184,7 +184,7 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                 ))}
 
                 {/* Add New Item */}
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid  gap-4  xs:grid-cols-2 sm:grid-cols-3">
                   <input
                     type="text"
                     placeholder="Item name"

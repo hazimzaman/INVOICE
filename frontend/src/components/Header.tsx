@@ -46,7 +46,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-md w-full">
+    <header className="bg-white shadow-md w-full shadow-[0_4px_6px_-1px_rgba(0,0,0,0.4)]">
       <div className="container mx-auto max-w-[1240px] px-4">
         <nav className="py-4">
           <div className="flex items-center gap-4 justify-between">
