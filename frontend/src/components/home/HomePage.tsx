@@ -7,7 +7,7 @@ export default function HomePage() {
   const { user } = useAuth();
 
   return (
-    <section className="h-screen   px-4 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center ">
+    <section className="h-[100vh]   px-4 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center ">
       <div className="w-full max-w-[1240px] mx-auto grid grid-cols-1  gap-4 sm:grid-cols-2 ">
           <div className="flex flex-col justify-center gap-4">
             <h1 className=" tracking-tight text-3xl font-extrabold text-gray-900 sm:text-4xl md:text-5xl">
@@ -20,15 +20,7 @@ export default function HomePage() {
             <div className="mt-4 max-w-md w-fit  ">
               {!user ? (
                 <>
-                  <div className="rounded-md shadow">
-                    <Link
-                      href="/login"
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
-                    >
-                      Get Started
-                    </Link>
-                  </div>
-                  <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
+                 <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
                     <Link
                       href="/signup"
                       className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10"
@@ -40,10 +32,10 @@ export default function HomePage() {
               ) : (
                 <div className="rounded-md shadow">
                   <Link
-                    href="/dashboard"
+                    href="/"
                     className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
                   >
-                    Go to Dashboard
+                    Go to Home
                   </Link>
                 </div>
               )}
