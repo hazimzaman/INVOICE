@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchInvoices, deleteInvoice } from '@/store/slices/invoicesSlice';
 import { FiEye, FiEdit2, FiTrash2, FiMail, FiCalendar, FiChevronDown, FiDownload, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiCheckCircle, FiAlertCircle, FiSend, FiMoreVertical, FiLoader, FiX } from 'react-icons/fi';
@@ -18,15 +18,23 @@ import DownloadConfirmationModal from './DownloadConfirmationModal';
 
 interface InvoicesTableProps {
   searchQuery: string;
-  filterType: FilterType;
+  filterType: string;
   statusFilter: string;
+  isSelectionMode: boolean;
+  setIsSelectionMode: (mode: boolean) => void;
 }
 
 type SortOrder = 'asc' | 'desc';
 type SortField = 'date' | 'amount' | 'status';
 type FilterType = 'all' | 'highest_paid' | 'lowest_paid' | 'latest' | 'oldest' | 'status';
 
-export default function InvoicesTable({ searchQuery, filterType, statusFilter }: InvoicesTableProps) {
+export default function InvoicesTable({ 
+  searchQuery, 
+  filterType, 
+  statusFilter,
+  isSelectionMode,
+  setIsSelectionMode 
+}: InvoicesTableProps) {
   const dispatch = useAppDispatch();
   const { invoices, loading } = useAppSelector((state) => state.invoices);
   const { data: settings } = useAppSelector((state) => state.settings);
@@ -39,7 +47,13 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-  const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
+  const [loadingStates, setLoadingStates] = useState<{
+    [key: string]: {
+      download: boolean;
+      email: boolean;
+      delete: boolean;
+    };
+  }>({});
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -53,6 +67,13 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
   const [selectedDownloadInvoices, setSelectedDownloadInvoices] = useState<string[]>([]);
   const [showMultiDownloadModal, setShowMultiDownloadModal] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'download' | 'email' | 'delete' | 'status' | null>(null);
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<'pending' | 'paid' | 'overdue' | null>(null);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
 
   const defaultSettings: Settings = {
     business_name: '',
@@ -116,10 +137,13 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
 
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
-      const pdfBlob = await generatePDF(invoice, settings || defaultSettings);
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], download: true }
+      }));
       
-      // Create download link with client name
-      const fileName = `invoice-${invoice.invoice_number} ${invoice.client?.name}.pdf`;
+      const pdfBlob = await generatePDF(invoice, settings || defaultSettings);
+      const fileName = `invoice-${invoice.invoice_number}-${invoice.client?.name}.pdf`;
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
@@ -128,52 +152,55 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
       toast.success('PDF downloaded successfully');
     } catch (error) {
-      console.error('Failed to download PDF:', error);
       toast.error('Failed to download PDF');
+    } finally {
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], download: false }
+      }));
     }
   };
 
-  const handleSendEmail = async (invoiceId: string) => {
-    setShowEmailModal(false);
-    setSendingEmail(invoiceId);
+  const handleSendEmail = async (invoice: Invoice) => {
     try {
-      const invoice = invoices.find(i => i.id === invoiceId);
-      if (!invoice) throw new Error('Invoice not found');
-      if (!invoice.client?.email) throw new Error('Client email is required');
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], email: true }
+      }));
+
+      if (!invoice.client?.email) {
+        throw new Error('Client email is required');
+      }
 
       const pdfBlob = await generatePDF(invoice, settings || defaultSettings);
-      
-      // Convert PDF to base64
-      const pdfBase64 = await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1]);
         reader.readAsDataURL(pdfBlob);
-      });
 
-      // Prepare email content
-      const emailBody = replaceTemplateVariables(settings?.email_template || '', invoice, settings);
-      const emailSubject = replaceTemplateVariables(settings?.email_subject || 'Invoice {{invoice_number}} from {{business_name}}', invoice, settings);
+      reader.onloadend = async () => {
+        const base64data = reader.result?.toString().split(',')[1];
 
-      // Send email with proper format
-      await sendEmail({
+        const emailParams = {
         to: invoice.client.email,
-        subject: emailSubject,
-        body: emailBody,
+          subject: replaceTemplateVariables(settings?.email_subject || 'Invoice {{invoice_number}} from {{business_name}}', invoice, settings),
+          body: replaceTemplateVariables(settings?.email_template || '', invoice, settings),
         attachments: [{
           filename: `invoice-${invoice.invoice_number}.pdf`,
-          content: pdfBase64 as string
+            content: base64data as string
         }]
-      });
+        };
 
-      toast.success('Email sent successfully');
+        await sendEmail(emailParams);
+        toast.success('Email sent successfully');
+      };
     } catch (error) {
-      console.error('Error sending email:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to send email');
     } finally {
-      setSendingEmail(null);
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], email: false }
+      }));
     }
   };
 
@@ -236,12 +263,20 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
 
   const handleDelete = async (invoice: Invoice) => {
     try {
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], delete: true }
+      }));
+      
       await dispatch(deleteInvoice(invoice.id)).unwrap();
       toast.success('Invoice deleted successfully');
-      setIsDeleteModalOpen(false);
     } catch (error) {
-      console.error('Failed to delete invoice:', error);
       toast.error('Failed to delete invoice');
+    } finally {
+      setLoadingStates(prev => ({
+        ...prev,
+        [invoice.id]: { ...prev[invoice.id], delete: false }
+      }));
     }
   };
 
@@ -276,7 +311,7 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
         const invoice = invoices.find(i => i.id === id);
         if (!invoice) continue;
         setLoadingStates(prev => ({ ...prev, [`send_${id}`]: true }));
-        await handleSendEmail(id);
+        await handleSendEmail(invoice);
       }
       setSelectedEmailInvoices([]);
       setIsMultiEmailMode(false);
@@ -304,317 +339,317 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
     }
   };
 
+  const handleBulkStatusUpdate = async (invoices: Invoice[], newStatus: string) => {
+    try {
+      await Promise.all(
+        invoices.map(invoice => 
+          supabase
+            .from('invoices')
+            .update({ 
+              status: newStatus, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', invoice.id)
+        )
+      );
+      dispatch(fetchInvoices());
+      toast.success('Status updated for all selected invoices');
+    } catch (error) {
+      throw new Error('Failed to update status');
+    }
+  };
+
+  const handleBulkAction = async () => {
+    if (!bulkActionType || selectedInvoices.length === 0) return;
+    
+    setIsBulkActionLoading(true);
+    try {
+      const selectedInvoiceObjects = invoices.filter(inv => selectedInvoices.includes(inv.id));
+      
+      switch (bulkActionType) {
+        case 'download':
+          for (const invoice of selectedInvoiceObjects) {
+            await handleDownloadPDF(invoice);
+          }
+          toast.success('All invoices downloaded successfully');
+          break;
+          
+        case 'email':
+          for (const invoice of selectedInvoiceObjects) {
+            await handleSendEmail(invoice);
+          }
+          toast.success('All emails sent successfully');
+          break;
+          
+        case 'delete':
+          for (const invoice of selectedInvoiceObjects) {
+            await handleDelete(invoice);
+          }
+          toast.success('All selected invoices deleted');
+          break;
+          
+        case 'status':
+          if (!selectedStatus) {
+            toast.error('Please select a status');
+            return;
+          }
+          await handleBulkStatusUpdate(selectedInvoiceObjects, selectedStatus);
+          break;
+      }
+      
+      // Reset selection state
+      setSelectedInvoices([]);
+      setIsSelectionMode(false);
+      setShowBulkActions(false);
+      setBulkActionType(null);
+      setSelectedStatus(null);
+      
+    } catch (error) {
+      toast.error(`Failed to ${bulkActionType} some invoices`);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleDateClick = (invoiceId: string, currentDate: string) => {
+    setEditingDate(invoiceId);
+  };
+
+  const handleStatusClick = (invoiceId: string) => {
+    setEditingStatus(invoiceId);
+  };
+
   if (loading) {
     return <div className="text-center py-4">Loading...</div>;
   }
 
   return (
-    <>
-      {/* Desktop Table - Hide on small screens */}
-      <div className="hidden sm:block ">
-        <table className="min-w-full divide-y divide-gray-200">
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Table view for sm and above */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full">
           <thead className="bg-gray-50">
-            <tr className='overflow-visible'>
-              {isMultiDeleteMode && (
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Select
+            <tr>
+              {isSelectionMode && (
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedInvoices.length === invoices.length}
+                    onChange={(e) => {
+                      setSelectedInvoices(e.target.checked 
+                        ? invoices.map(inv => inv.id)
+                        : []
+                      );
+                    }}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
                 </th>
               )}
-              {isMultiEmailMode && (
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Select
-                </th>
-              )}
-              {isMultiDownloadMode && (
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Select
-                </th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
-                Invoice #
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Client
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell  ">
-                Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell ">
-                Total
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase ">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:block">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200 overflow-visible">
+          <tbody className="divide-y divide-gray-200">
             {getFilteredAndSortedInvoices().map((invoice) => (
-              <tr key={invoice.id} className="group relative hover:bg-gray-50 overflow-visible">
-                {isMultiDeleteMode && (
-                  <td className="px-6 py-4 whitespace-nowrap">
+              <tr key={invoice.id} className="hover:bg-gray-50">
+                {isSelectionMode && (
+                  <td className="px-6 py-4">
                     <input
                       type="checkbox"
                       checked={selectedInvoices.includes(invoice.id)}
-                      onChange={() => toggleInvoiceSelection(invoice.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                  </td>
-                )}
-                {isMultiEmailMode && (
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={selectedEmailInvoices.includes(invoice.id)}
                       onChange={() => {
-                        setSelectedEmailInvoices(prev => 
-                          prev.includes(invoice.id) 
+                        setSelectedInvoices(prev => 
+                          prev.includes(invoice.id)
                             ? prev.filter(id => id !== invoice.id)
                             : [...prev, invoice.id]
                         );
                       }}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-blue-600"
                     />
                   </td>
                 )}
-                {isMultiDownloadMode && (
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4">{invoice.invoice_number}</td>
+                <td className="px-6 py-4">{invoice.client?.name}</td>
+                <td className="px-6 py-4">${invoice.total}</td>
+                <td className="px-6 py-4 hidden md:block">
+                  {editingDate === invoice.id ? (
                     <input
-                      type="checkbox"
-                      checked={selectedDownloadInvoices.includes(invoice.id)}
-                      onChange={() => {
-                        setSelectedDownloadInvoices(prev => 
-                          prev.includes(invoice.id) 
-                            ? prev.filter(id => id !== invoice.id)
-                            : [...prev, invoice.id]
-                        );
+                      type="date"
+                      defaultValue={invoice.date}
+                      className="w-full p-1 border rounded-md"
+                      onChange={(e) => {
+                        handleDateUpdate(invoice.id, e.target.value);
+                        setEditingDate(null);
                       }}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      onBlur={() => setEditingDate(null)}
+                      autoFocus
                     />
-                  </td>
-                )}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {invoice.invoice_number}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {invoice.client?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell  ">
-                  <div className="relative inline-block text-left">
-                    <button
-                      onClick={() => setOpenDropdownId(openDropdownId === `date-${invoice.id}` ? null : `date-${invoice.id}`)}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+                  ) : (
+                    <div 
+                      onClick={() => handleDateClick(invoice.id, invoice.date)}
+                      className="cursor-pointer hover:text-blue-600 "
                     >
-                      <FiCalendar className="w-4 h-4" />
-                      <span>{new Date(invoice.date).toLocaleDateString()}</span>
-                      <FiChevronDown className="w-4 h-4" />
-                    </button>
-                    
-                    {openDropdownId === `date-${invoice.id}` && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-30"
-                          onClick={() => setOpenDropdownId(null)}
-                        />
-                        <div 
-                          className="absolute right-0 z-50 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                          style={{ transform: 'translateY(0%)' }}
-                        >
-                          <input
-                            type="date"
-                            defaultValue={invoice.date.split('T')[0]}
-                            onChange={(e) => handleDateUpdate(invoice.id, e.target.value)}
-                            className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      {formatDate(invoice.date)}
+                    </div>
+                  )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                  ${invoice.total.toFixed(2)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap ">
-                  <div className="relative inline-block text-left">
-                    <button
-                      onClick={() => setOpenDropdownId(openDropdownId === `status-${invoice.id}` ? null : `status-${invoice.id}`)}
-                      className={`inline-flex items-center space-x-2 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        invoice.status === 'paid'
-                          ? 'bg-green-100 text-green-800'
-                          : invoice.status === 'overdue'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
+                <td className="px-6 py-4 relative">
+                  {editingStatus === invoice.id ? (
+                    <select
+                      value={invoice.status}
+                      onChange={(e) => {
+                        handleStatusUpdate(invoice.id, e.target.value);
+                        setEditingStatus(null);
+                      }}
+                      onBlur={() => setEditingStatus(null)}
+                      className="w-full p-1 border rounded-md"
+                      autoFocus
                     >
-                      <span>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
-                      <FiChevronDown className="w-3 h-3" />
-                    </button>
-                    
-                    {openDropdownId === `status-${invoice.id}` && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-30"
-                          onClick={() => setOpenDropdownId(null)}
-                        />
-                        <div 
-                          className="absolute right-[-4] z-50 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                          style={{ transform: 'translateY(0%)' }}
-                        >
-                          <div className="py-1">
-                            {['pending', 'paid', 'overdue'].map((status) => (
-                              <button
-                                key={status}
-                                onClick={() => handleStatusUpdate(invoice.id, status)}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="overdue">Overdue</option>
+                    </select>
+                  ) : (
+                    <div 
+                      onClick={() => handleStatusClick(invoice.id)}
+                      className="cursor-pointer"
+                    >
+                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(invoice.status)}`}>
+                        {invoice.status}
+                      </span>
+                    </div>
+                  )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {/* Show all actions on large screens */}
-                  <div className="hidden lg:flex items-center justify-end">
+                <td className="px-6 py-4 text-right">
+                  {/* Desktop Actions */}
+                  <div className="hidden lg:flex items-center justify-end gap-2">
                     <button
                       onClick={() => {
                         setSelectedInvoice(invoice);
                         setIsViewModalOpen(true);
                       }}
-                      className="text-blue-600 hover:text-blue-900 mx-2"
-                      title="View"
+                      className="p-2 text-blue-500 hover:text-blue-700 transition-colors"
                     >
                       <FiEye className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => {
                         setSelectedInvoice(invoice);
-                        setIsDownloadModalOpen(true);
-                      }}
-                      className="flex items-center  px-1 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <FiDownload className="w-4 h-4 mr-2" />
-                      
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedInvoiceId(invoice.id);
-                        setShowEmailModal(true);
-                      }}
-                      className="flex items-center  px-1 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      {sendingEmail === invoice.id ? (
-                        <FiLoader className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <FiMail className="w-4 h-4 mr-2" />
-                      )}
-                      
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
                         setIsEditModalOpen(true);
                       }}
-                      className="text-indigo-600 hover:text-indigo-900 mx-2"
-                      title="Edit"
+                      className="p-2 text-indigo-500 hover:text-indigo-700 transition-colors"
                     >
                       <FiEdit2 className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      className="text-red-600 hover:text-red-900 mx-2"
-                      title="Delete"
+                      onClick={() => handleDownloadPDF(invoice)}
+                      disabled={loadingStates[invoice.id]?.download}
+                      className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative"
                     >
-                      <FiTrash2 className="w-5 h-5" />
+                      {loadingStates[invoice.id]?.download ? (
+                        <div className="animate-spin">
+                          <FiLoader className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <FiDownload className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleSendEmail(invoice)}
+                      disabled={loadingStates[invoice.id]?.email}
+                      className="p-2 text-green-500 hover:text-green-700 transition-colors relative"
+                    >
+                      {loadingStates[invoice.id]?.email ? (
+                        <div className="animate-spin">
+                          <FiLoader className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <FiMail className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(invoice)}
+                      disabled={loadingStates[invoice.id]?.delete}
+                      className="p-2 text-red-500 hover:text-red-700 transition-colors relative"
+                    >
+                      {loadingStates[invoice.id]?.delete ? (
+                        <div className="animate-spin text-red-500">
+                          <FiLoader className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <FiTrash2 className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
 
-                  {/* Show three dots menu on smaller screens */}
+                  {/* Mobile Actions Menu */}
                   <div className="lg:hidden relative">
-                    <button 
-                      onClick={() => toggleDropdown(invoice.id)}
-                      className="p-2 hover:bg-gray-100 rounded-full"
+                    <button
+                      onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
+                      className="p-2 text-gray-600 hover:text-gray-800"
                     >
-                      <FiMoreVertical className="w-5 h-5 text-gray-500" />
+                      <FiMoreVertical className="w-5 h-5" />
                     </button>
 
-                    {/* Dropdown menu */}
-                    {openDropdownId === invoice.id && (
+                    {/* Dropdown Menu */}
+                    {openActionMenu === invoice.id && (
                       <>
                         <div 
-                          className="fixed inset-0 z-30"
-                          onClick={() => setOpenDropdownId(null)}
+                          className="fixed inset-0 z-10"
+                          onClick={() => setOpenActionMenu(null)}
                         />
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-40 border border-gray-200">
-                          <div className="py-1">
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(invoice);
-                                setIsViewModalOpen(true);
-                                toggleDropdown(invoice.id);
-                              }}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                            >
-                              <FiEye className="mr-3 w-4 h-4" />
-                              View
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(invoice);
-                                setIsDownloadModalOpen(true);
-                                toggleDropdown(invoice.id);
-                              }}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <FiDownload className="mr-3 w-4 h-4" />
-                             
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedInvoiceId(invoice.id);
-                                setShowEmailModal(true);
-                                toggleDropdown(invoice.id);
-                              }}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 "
-                            >
-                              {sendingEmail === invoice.id ? (
-                                <FiLoader className="mr-3 w-4 h-4 animate-spin" />
-                              ) : (
-                                <FiMail className="mr-3 w-4 h-4" />
-                              )}
-                              S
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(invoice);
-                                setIsEditModalOpen(true);
-                                toggleDropdown(invoice.id);
-                              }}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                            >
-                              <FiEdit2 className="mr-3 w-4 h-4" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(invoice);
-                                setIsDeleteModalOpen(true);
-                                toggleDropdown(invoice.id);
-                              }}
-                              className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
-                            >
-                              <FiTrash2 className="mr-3 w-4 h-4" />
-                              Delete
-                            </button>
-                          </div>
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
+                          <button
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setIsViewModalOpen(true);
+                              setOpenActionMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <FiEye className="w-4 h-4" /> View
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setIsEditModalOpen(true);
+                              setOpenActionMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <FiEdit2 className="w-4 h-4" /> Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDownloadPDF(invoice);
+                              setOpenActionMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <FiDownload className="w-4 h-4" /> Download
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleSendEmail(invoice);
+                              setOpenActionMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <FiMail className="w-4 h-4" /> Send Email
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDelete(invoice);
+                              setOpenActionMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <FiTrash2 className="w-4 h-4" /> Delete
+                          </button>
                         </div>
                       </>
                     )}
@@ -626,121 +661,310 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
         </table>
       </div>
 
-      {/* Mobile Cards - Show only on small screens */}
-      <div className="sm:hidden space-y-4">
-        {invoices.map((invoice) => (
-          <div key={invoice.id} className="bg-white rounded-lg shadow p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</p>
-                <p className="text-gray-600">{invoice.client?.name}</p>
+      {/* Card view for mobile */}
+      <div className="sm:hidden p-4 space-y-4">
+        {getFilteredAndSortedInvoices().map((invoice) => (
+          <div 
+            key={invoice.id} 
+            className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden"
+          >
+            {/* Selection Checkbox */}
+            {isSelectionMode && (
+              <div className="p-4 border-b border-gray-100 bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={selectedInvoices.includes(invoice.id)}
+                  onChange={() => {
+                    setSelectedInvoices(prev => 
+                      prev.includes(invoice.id)
+                        ? prev.filter(id => id !== invoice.id)
+                        : [...prev, invoice.id]
+                    );
+                  }}
+                  className="rounded border-gray-300 text-blue-600"
+                />
               </div>
-              
-              {/* Three dots menu */}
-              <div className="relative">
-                <button 
-                  onClick={() => toggleDropdown(invoice.id)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <FiMoreVertical className="w-5 h-5 text-gray-500" />
-                </button>
+            )}
 
-                {/* Dropdown menu */}
-                {openDropdownId === invoice.id && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsViewModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiEye className="mr-3 w-4 h-4" />
-                        View Invoice
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoiceId(invoice.id);
-                          setShowEmailModal(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        {sendingEmail === invoice.id ? (
-                          <FiLoader className="mr-3 w-4 h-4 animate-spin" />
-                        ) : (
-                          <FiMail className="mr-3 w-4 h-4" />
-                        )}
-                        Send Email
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsEditModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiEdit2 className="mr-3 w-4 h-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsDownloadModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
-                      >
-                        <FiDownload className="mr-3 w-4 h-4" />
-                        Download
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setIsDeleteModalOpen(true);
-                          toggleDropdown(invoice.id);
-                        }}
-                        className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
-                      >
-                        <FiTrash2 className="mr-3 w-4 h-4" />
-                        Delete
-                      </button>
+            {/* Invoice Details */}
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">#{invoice.invoice_number}</h3>
+                  <p className="text-gray-600">{invoice.client?.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-semibold text-gray-900">${invoice.total}</p>
+                  <p className="text-sm text-gray-500">{formatDate(invoice.date)}</p>
+                </div>
+              </div>
+
+              {/* Status and Actions Row */}
+              <div className="flex justify-between items-center pt-2">
+                {/* Status */}
+                <div>
+                  {editingStatus === invoice.id ? (
+                    <select
+                      value={invoice.status}
+                      onChange={(e) => {
+                        handleStatusUpdate(invoice.id, e.target.value);
+                        setEditingStatus(null);
+                      }}
+                      onBlur={() => setEditingStatus(null)}
+                      className="w-full p-1 border rounded-md"
+                      autoFocus
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="overdue">Overdue</option>
+                    </select>
+                  ) : (
+                    <div 
+                      onClick={() => handleStatusClick(invoice.id)}
+                      className="cursor-pointer inline-block"
+                    >
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
+                        {invoice.status}
+                      </span>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                  )}
+                </div>
 
-            <div className="mt-4 space-y-2">
-              <div className="flex gap-2">
-                <span className="text-gray-500">Amount:</span>
-                <span className="font-medium">€{invoice.total.toFixed(2)}</span>
-              </div>
-              <div className="flex gap-2 ">
-                <span className="text-gray-500">Due Date:</span>
-                <span>{new Date(invoice.date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex gap-2 ">
-                <span className="text-gray-500">Status:</span>
-                <span className={`px-2 py-1 rounded-full text-xs 
-                  ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 
-                    invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                    'bg-red-100 text-red-800'}`}
-                >
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                </span>
+                {/* Actions Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
+                    className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
+                  >
+                    <FiMoreVertical className="w-5 h-5" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {openActionMenu === invoice.id && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10"
+                        onClick={() => setOpenActionMenu(null)}
+                      />
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setIsViewModalOpen(true);
+                            setOpenActionMenu(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <FiEye className="w-4 h-4" /> View
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setIsEditModalOpen(true);
+                            setOpenActionMenu(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <FiEdit2 className="w-4 h-4" /> Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDownloadPDF(invoice);
+                            setOpenActionMenu(null);
+                          }}
+                          disabled={loadingStates[invoice.id]?.download}
+                          className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          {loadingStates[invoice.id]?.download ? (
+                            <FiLoader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiDownload className="w-4 h-4" />
+                          )}{' '}
+                          Download
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleSendEmail(invoice);
+                            setOpenActionMenu(null);
+                          }}
+                          disabled={loadingStates[invoice.id]?.email}
+                          className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          {loadingStates[invoice.id]?.email ? (
+                            <FiLoader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiMail className="w-4 h-4" />
+                          )}{' '}
+                          Send Email
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDelete(invoice);
+                            setOpenActionMenu(null);
+                          }}
+                          disabled={loadingStates[invoice.id]?.delete}
+                          className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          {loadingStates[invoice.id]?.delete ? (
+                            <FiLoader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiTrash2 className="w-4 h-4" />
+                          )}{' '}
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Modals */}
+      {/* Bulk Action Button */}
+      {isSelectionMode && (
+        <div className="fixed bottom-8 right-8 flex gap-2">
+          <button
+            onClick={() => {
+              setIsSelectionMode(false);
+              setSelectedInvoices([]);
+            }}
+            className="px-4 py-2 text-gray-600 bg-white rounded-lg shadow hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => setShowBulkActions(true)}
+            disabled={selectedInvoices.length === 0}
+            className={`px-6 py-2 rounded-lg shadow ${
+              selectedInvoices.length === 0
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            Next ({selectedInvoices.length})
+          </button>
+        </div>
+      )}
+
+      {/* Bulk Actions Modal */}
+      {showBulkActions && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Bulk Actions</h2>
+              <button 
+                onClick={() => {
+                  setShowBulkActions(false);
+                  setBulkActionType(null);
+                  setSelectedStatus(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => setBulkActionType('download')}
+                className={`w-full p-3 rounded-lg flex items-center gap-2 transition-colors ${
+                  bulkActionType === 'download' 
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <FiDownload className="w-5 h-5" />
+                <span>Download Selected Invoices</span>
+              </button>
+
+              <button
+                onClick={() => setBulkActionType('email')}
+                className={`w-full p-3 rounded-lg flex items-center gap-2 transition-colors ${
+                  bulkActionType === 'email' 
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <FiMail className="w-5 h-5" />
+                <span>Send Email</span>
+              </button>
+
+              <button
+                onClick={() => setBulkActionType('delete')}
+                className={`w-full p-3 rounded-lg flex items-center gap-2 transition-colors ${
+                  bulkActionType === 'delete' 
+                    ? 'bg-red-50 text-red-600 border border-red-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <FiTrash2 className="w-5 h-5" />
+                <span>Delete Selected Invoices</span>
+              </button>
+
+              <div
+                onClick={() => setBulkActionType('status')}
+                className={`w-full p-3 rounded-lg transition-colors ${
+                  bulkActionType === 'status' 
+                    ? 'bg-blue-50 border border-blue-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <FiCheckCircle className="w-5 h-5" />
+                  <span className="text-gray-700">Update Status</span>
+                </div>
+                
+                {bulkActionType === 'status' && (
+                  <select
+                    value={selectedStatus || ''}
+                    onChange={(e) => setSelectedStatus(e.target.value as 'pending' | 'paid' | 'overdue')}
+                    className="mt-2 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowBulkActions(false);
+                  setBulkActionType(null);
+                  setSelectedStatus(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              {(bulkActionType && (bulkActionType !== 'status' || selectedStatus)) && (
+                <button
+                  onClick={handleBulkAction}
+                  disabled={isBulkActionLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  {isBulkActionLoading ? (
+                    <>
+                      <FiLoader className="w-5 h-5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Confirm</span>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
       {selectedInvoice && (
-        <>
           <ViewInvoiceModal
             isOpen={isViewModalOpen}
             onClose={() => {
@@ -749,6 +973,10 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
             }}
             invoice={selectedInvoice}
           />
+      )}
+
+      {/* Edit Modal */}
+      {selectedInvoice && (
           <EditInvoiceModal
             isOpen={isEditModalOpen}
             onClose={() => {
@@ -757,246 +985,17 @@ export default function InvoicesTable({ searchQuery, filterType, statusFilter }:
             }}
             invoice={selectedInvoice}
           />
-          <DeleteConfirmationModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => {
-              setIsDeleteModalOpen(false);
-              setSelectedInvoice(null);
-            }}
-            onConfirm={() => selectedInvoice && handleDelete(selectedInvoice)}
-            title="Delete Invoice"
-            message="Are you sure you want to delete this invoice? This action cannot be undone."
-            footer={
-              <div className="mt-6 flex justify-between items-center">
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setIsDeleteModalOpen(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => selectedInvoice && handleDelete(selectedInvoice)}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-                <button
-                  onClick={() => {
-                    setIsDeleteModalOpen(false);
-                    setIsMultiDeleteMode(true);
-                    setSelectedInvoices([selectedInvoice?.id || '']);
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  Delete More
-                </button>
-              </div>
-            }
-          />
-        </>
       )}
-
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-[400px]">
-            <h3 className="text-lg font-semibold mb-4">Send Invoice Email</h3>
-            <p>Are you sure you want to send this invoice via email?</p>
-            <div className="mt-6 flex justify-between items-center">
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => selectedInvoiceId && handleSendEmail(selectedInvoiceId)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Send Email
-                </button>
-              </div>
-              <button
-                onClick={() => {
-                  setShowEmailModal(false);
-                  setIsMultiEmailMode(true);
-                  setSelectedEmailInvoices([selectedInvoiceId || '']);
-                }}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Send More
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showMultiDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl">
-            <h3 className="text-lg font-semibold mb-4">Delete Multiple Invoices</h3>
-            <p>Are you sure you want to delete {selectedInvoices.length} selected invoices?</p>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowMultiDeleteModal(false);
-                  setSelectedInvoices([]);
-                  setIsMultiDeleteMode(false);
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleMultiDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Delete Selected
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isMultiDeleteMode && selectedInvoices.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-40">
-          <button
-            onClick={() => setShowMultiDeleteModal(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-          >
-            <FiTrash2 className="w-5 h-5" />
-            <span>Delete Selected ({selectedInvoices.length})</span>
-          </button>
-        </div>
-      )}
-
-      {isMultiEmailMode && selectedEmailInvoices.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-40 flex space-x-2">
-          <button
-            onClick={() => {
-              setSelectedEmailInvoices([]);
-              setIsMultiEmailMode(false);
-            }}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
-          >
-            <FiX className="w-5 h-5" />
-            <span>Cancel</span>
-          </button>
-          <button
-            onClick={() => setShowMultiEmailModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-          >
-            <FiMail className="w-5 h-5" />
-            <span>Send Emails ({selectedEmailInvoices.length})</span>
-          </button>
-        </div>
-      )}
-
-      {showMultiEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl">
-            <h3 className="text-lg font-semibold mb-4">Send Multiple Emails</h3>
-            <p>Are you sure you want to send emails to {selectedEmailInvoices.length} selected invoices?</p>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowMultiEmailModal(false);
-                  setSelectedEmailInvoices([]);
-                  setIsMultiEmailMode(false);
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleMultiSendEmail}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Send Selected
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <DownloadConfirmationModal
-        isOpen={isDownloadModalOpen}
-        onClose={() => {
-          setIsDownloadModalOpen(false);
-          setSelectedInvoice(null);
-        }}
-        onConfirm={() => {
-          handleDownloadPDF(selectedInvoice!);
-          setIsDownloadModalOpen(false);
-        }}
-        onDownloadMore={() => {
-          setIsDownloadModalOpen(false);
-          setIsMultiDownloadMode(true);
-          setSelectedDownloadInvoices([selectedInvoice?.id || '']);
-        }}
-      />
-
-      {showMultiDownloadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-[400px]">
-            <h3 className="text-lg font-semibold mb-4">Download Invoice PDF</h3>
-            <p>Do you want to download this invoice as PDF?</p>
-            <div className="mt-6 flex justify-between items-center">
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowMultiDownloadModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    handleDownloadPDF(selectedInvoice!);
-                    setShowMultiDownloadModal(false);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Download
-                </button>
-              </div>
-              <button
-                onClick={() => {
-                  setShowMultiDownloadModal(false);
-                  setIsMultiDownloadMode(true);
-                  setSelectedDownloadInvoices([selectedInvoice?.id || '']);
-                }}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Download More
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isMultiDownloadMode && selectedDownloadInvoices.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-40 flex space-x-2">
-          <button
-            onClick={() => {
-              setSelectedDownloadInvoices([]);
-              setIsMultiDownloadMode(false);
-            }}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
-          >
-            <FiX className="w-5 h-5" />
-            <span>Cancel</span>
-          </button>
-          <button
-            onClick={handleMultiDownload}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-          >
-            <FiDownload className="w-5 h-5" />
-            <span>Download PDFs ({selectedDownloadInvoices.length})</span>
-          </button>
-        </div>
-      )}
-    </>
+    </div>
   );
 } 
+
+// Utility functions
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'paid': return 'bg-green-100 text-green-800';
+    case 'pending': return 'bg-yellow-100 text-yellow-800';
+    case 'overdue': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+}; 

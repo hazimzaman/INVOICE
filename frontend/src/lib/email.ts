@@ -1,31 +1,37 @@
-interface EmailAttachment {
-  filename: string;
-  content: string;
-}
+import { Invoice } from '@/types/invoice';
+import { Settings } from '@/types/settings';
 
-interface SendEmailParams {
-  to: string;
-  subject: string;
-  body: string;
-  attachments?: EmailAttachment[];
-}
-
-export async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
+export const sendEmail = async (
+  invoice: Invoice,
+  settings: Settings,
+  emailContent: string,
+  pdfBuffer: Buffer
+) => {
   try {
-    const response = await fetch('/api/send-email', {
+    const formData = new FormData();
+    formData.append('to', invoice.client?.email || '');
+    formData.append('subject', `Invoice ${invoice.invoice_number} from ${settings.business_name}`);
+    formData.append('html', emailContent);
+    formData.append('cc', settings.cc_email || '');
+    formData.append('bcc', settings.bcc_email || '');
+    
+    // Convert Buffer to Blob and append to FormData
+    const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    formData.append('attachment', pdfBlob, `invoice-${invoice.invoice_number}.pdf`);
+
+    const response = await fetch('http://localhost:5000/api/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, body, attachments }),
+      body: formData,
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.details || 'Failed to send email');
+      throw new Error(errorData.message || 'Failed to send email');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
+    console.error('Email sending error:', error);
+    throw new Error('Failed to send email');
   }
-} 
+}; 

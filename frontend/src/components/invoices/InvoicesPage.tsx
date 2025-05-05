@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import InvoicesTable from './InvoicesTable';
 import AddInvoiceModal from './AddInvoiceModal';
-import { FiPlus, FiSearch, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiCalendar, FiDollarSign, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiCalendar, FiDollarSign, FiCheckCircle, FiAlertCircle, FiCheck } from 'react-icons/fi';
 
 type FilterType = 'all' | 'highest_paid' | 'lowest_paid' | 'latest' | 'oldest' | 'status';
 
@@ -19,6 +19,7 @@ export default function InvoicesPage() {
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,8 +38,8 @@ export default function InvoicesPage() {
   <section className='w-full pt-35 pb-20'>
 <div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col justify-between items-center gap-2 sm:flex-row ">
-        <h1 className="text-2xl font-bold">Invoices</h1>
+      <div className="max-w-[1240px] w-full mx-auto  flex flex-col justify-between items-center gap-2 sm:flex-row  ">
+        <h1 className="text-2xl font-bold">Invoicesss</h1>
         
         <div className="flex gap-2 flex-col sm:flex-row">
           {/* Search */}
@@ -179,6 +180,17 @@ export default function InvoicesPage() {
             <FiPlus className="w-5 h-5" />
             <span>Add Invoice</span>
           </button>
+          <button
+            onClick={() => setIsSelectionMode(!isSelectionMode)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              isSelectionMode 
+                ? 'bg-gray-200 text-gray-800' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            <FiCheck className="w-5 h-5" />
+            <span>{isSelectionMode ? 'Cancel Selection' : 'Select'}</span>
+          </button>
          </div>
           
         </div>
@@ -189,6 +201,8 @@ export default function InvoicesPage() {
         searchQuery={searchQuery} 
         filterType={filterType}
         statusFilter={statusFilter}
+        isSelectionMode={isSelectionMode}
+        setIsSelectionMode={setIsSelectionMode}
       />
 
       {/* Add Invoice Modal */}
