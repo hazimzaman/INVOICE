@@ -33,7 +33,7 @@ export default function EditClientModal({ isOpen, onClose, onSave, client }: Edi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 transition-all duration-300">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
       <div className=" m-4 bg-white rounded-lg w-full max-w-[600px] p-6 shadow-xl transform transition-all duration-300 scale-100  ">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Edit Client</h2>

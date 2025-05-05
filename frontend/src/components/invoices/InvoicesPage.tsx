@@ -34,7 +34,7 @@ export default function InvoicesPage() {
   }, [dispatch, router]);
 
   return (
-  <section className='w-full'>
+  <section className='w-full pt-35 pb-20'>
 <div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col justify-between items-center gap-2 sm:flex-row ">

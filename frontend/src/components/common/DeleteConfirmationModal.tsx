@@ -7,6 +7,7 @@ interface DeleteConfirmationModalProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  footer?: React.ReactNode;
 }
 
 export default function DeleteConfirmationModal({
@@ -14,27 +15,21 @@ export default function DeleteConfirmationModal({
   onClose,
   onConfirm,
   title,
-  message
+  message,
+  footer
 }: DeleteConfirmationModalProps) {
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-      
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-sm w-full bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <FiAlertTriangle className="w-6 h-6 text-red-500" />
-            <Dialog.Title className="text-lg font-bold">{title}</Dialog.Title>
-          </div>
-
-          <Dialog.Description className="text-gray-600 mb-6">
-            {message}
-          </Dialog.Description>
-
-          <div className="flex justify-end gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-[400px]">
+        <h3 className="text-lg font-semibold mb-4">{title}</h3>
+        <p className="text-gray-600">{message}</p>
+        {footer || (
+          <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 border rounded hover:bg-gray-50"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
             >
               Cancel
             </button>
@@ -45,8 +40,8 @@ export default function DeleteConfirmationModal({
               Delete
             </button>
           </div>
-        </Dialog.Panel>
+        )}
       </div>
-    </Dialog>
+    </div>
   );
 } 

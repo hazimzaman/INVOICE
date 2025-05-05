@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { updateSettings } from '@/store/slices/settingsSlice';
+import { updateSettings, fetchSettings } from '@/store/slices/settingsSlice';
 import { Settings } from '@/types/settings';
 import { toast } from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 const defaultTemplate = `Dear {{client_name}},
 
@@ -46,6 +48,52 @@ export default function SettingsPage() {
     email_template: settings?.email_template || defaultTemplate,
     email_subject: settings?.email_subject || 'Invoice {{invoice_number}} from {{business_name}}'
   });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
+
+  // Load existing logo on component mount
+  useEffect(() => {
+    console.log('Settings from store:', settings);
+    console.log('Business logo URL:', settings?.business_logo);
+    if (settings?.business_logo) {
+      setLogoPreview(settings.business_logo);
+      console.log('Setting logo preview to:', settings.business_logo);
+    }
+  }, [settings]);
+
+  // Add this effect to fetch settings on mount
+  useEffect(() => {
+    dispatch(fetchSettings());
+  }, [dispatch]);
+
+  // Update initial state to use settings and handle filename
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        business_name: settings.business_name || '',
+        business_logo: settings.business_logo || '',
+        business_address: settings.business_address || '',
+        contact_name: settings.contact_name || '',
+        contact_email: settings.contact_email || '',
+        contact_phone: settings.contact_phone || '',
+        wise_email: settings.wise_email || '',
+        invoice_prefix: settings.invoice_prefix || 'INV-',
+        current_invoice_number: settings.current_invoice_number || 1,
+        footer_note: settings.footer_note || '',
+        email_template: settings.email_template || defaultTemplate,
+        email_subject: settings.email_subject || 'Invoice {{invoice_number}} from {{business_name}}'
+      });
+      setLogoPreview(settings.business_logo || null);
+      
+      // Extract filename from business_logo URL if it exists
+      if (settings.business_logo) {
+        const filename = settings.business_logo.split('/').pop() || '';
+        setSelectedFileName(filename.split('-').pop() || 'Current logo');
+      } else {
+        setSelectedFileName('');
+      }
+    }
+  }, [settings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +114,56 @@ export default function SettingsPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Set the selected filename
+    setSelectedFileName(file.name);
+    
+    try {
+      setLoading(true);
+      
+      // Upload to Supabase
+      const { data, error } = await supabase.storage
+        .from('logos')
+        .upload(`logos/${Date.now()}-${file.name}`, file);
+
+      if (error) throw error;
+
+      // Get public URL
+      const publicUrl = supabase.storage
+        .from('logos')
+        .getPublicUrl(`logos/${Date.now()}-${file.name}`).data.publicUrl;
+
+      console.log('Uploaded file URL:', publicUrl);
+
+      // Update both states
+      setFormData(prev => {
+        console.log('Updating formData with logo:', publicUrl);
+        return { ...prev, business_logo: publicUrl };
+      });
+      setLogoPreview(publicUrl);
+
+      // Save immediately
+      const result = await dispatch(updateSettings({ 
+        settings: { ...formData, business_logo: publicUrl } 
+      })).unwrap();
+      console.log('Save result:', result);
+
+      toast.success('Logo uploaded successfully');
+    } catch (error) {
+      setSelectedFileName(''); // Clear filename on error
+      console.error('Upload error:', error);
+      toast.error('Failed to upload logo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <section className='max-w-[1240px] w-full m-auto flex flex-col justify-center items-center pt-35 pb-20'>
+      <div className="max-w-4xl  p-6">
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Business Information Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -90,11 +186,23 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Business Logo
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg"
-              />
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="w-full h-[55px] px-4 border border-gray-200 rounded-lg flex items-center bg-white">
+                  <span className={selectedFileName ? 'text-black' : 'text-gray-500'}>
+                    {selectedFileName 
+                      ? `Current logo: ${selectedFileName}` 
+                      : 'Please select a logo...'}
+                  </span>
+                </div>
+              </div>
+              {/* Only show logo preview after successful upload */}
+              
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -271,5 +379,6 @@ export default function SettingsPage() {
         
       </form>
     </div>
+    </section>
   );
 } 

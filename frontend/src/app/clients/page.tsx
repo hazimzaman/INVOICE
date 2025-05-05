@@ -25,7 +25,8 @@ export default function Page() {
 
   return (
     <ProtectedRoute>
-      <ClientsTable 
+     <section className='container mx-auto px-4 pt-35 pb-20'>
+     <ClientsTable 
         onAddClick={() => setIsAddModalOpen(true)} 
       />
       <AddClientModal 
@@ -33,6 +34,7 @@ export default function Page() {
         onClose={() => setIsAddModalOpen(false)}
         onAddClient={handleAddClient}
       />
+     </section>
     </ProtectedRoute>
   );
 } 

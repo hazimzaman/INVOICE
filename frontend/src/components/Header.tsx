@@ -8,7 +8,7 @@ import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
 import { FiMenu, FiUser, FiSettings, FiLogOut, FiX, FiMoreVertical } from 'react-icons/fi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaPowerOff } from "react-icons/fa6";
 
 export default function Header() {
@@ -19,6 +19,8 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthDropdownOpen, setIsAuthDropdownOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -45,8 +47,30 @@ export default function Header() {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY) { // scrolling down
+        setIsVisible(false);
+      } else { // scrolling up
+        setIsVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', controlNavbar);
+    
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, [lastScrollY]);
+
   return (
-    <header className="bg-white shadow-md w-full shadow-[0_4px_6px_-1px_rgba(0,0,0,0.4)]">
+    <header className={`fixed w-full bg-white shadow-md transition-transform duration-300 z-50 ${
+      isVisible ? 'translate-y-0' : '-translate-y-full'
+    }`}>
       <div className="container mx-auto max-w-[1240px] px-4">
         <nav className="py-4">
           <div className="flex items-center gap-4 justify-between">

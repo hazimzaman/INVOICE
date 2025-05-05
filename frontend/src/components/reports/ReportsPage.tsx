@@ -168,7 +168,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-[1240px]">
+    <div className="container mx-auto px-4 pt-40 py-30 max-w-[1240px]">
       <div className="flex flex-col gap-2 sm:flex-row items-center justify-between mb-6 ">
         <h1 className="text-2xl font-bold">Reports & Analytics</h1>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
