@@ -38,12 +38,12 @@ export default function InvoicesPage() {
   <section className='w-full pt-35 pb-20'>
 <div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div className="max-w-[1240px] w-full mx-auto  flex flex-col justify-between items-center gap-2 sm:flex-row  ">
-        <h1 className="text-2xl font-bold">Invoicesss</h1>
+      <div className="max-w-[1240px] w-full mx-auto  flex flex-col justify-between items-center gap-2 md:flex-row ">
+        <h1 className="text-2xl font-bold">Invoices</h1>
         
-        <div className="flex gap-2 flex-col sm:flex-row">
+        <div className="w-full flex gap-2 flex-col sm:flex-row">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="w-[100%] relative flex-1 ">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FiSearch className="h-5 w-5 text-gray-400" />
             </div>
@@ -56,12 +56,12 @@ export default function InvoicesPage() {
             />
           </div>
 
-         <div className='flex gap-2 xs:flex-col xs:items-end xs:justify-end xs:w-full'>
+         <div className='grid grid-cols-2 gap-2 sm:flex sm:flex-row '>
                 {/* Filters Button */}
           <div className="relative">
             <button
               onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors h-full"
+              className="flex w-full items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors h-full"
             >
               <FiFilter className="w-4 h-4" />
               <span>Filters</span>
@@ -180,6 +180,7 @@ export default function InvoicesPage() {
             <FiPlus className="w-5 h-5" />
             <span>Add Invoice</span>
           </button>
+           {/* Select Invoice Button */}
           <button
             onClick={() => setIsSelectionMode(!isSelectionMode)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${

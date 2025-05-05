@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import LoginForm from '@/components/LoginForm';
 import AuthGuard from '@/components/AuthGuard';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <AuthGuard>
@@ -19,6 +22,8 @@ export default function LoginPage() {
           </div>
         )}
         <LoginForm />
+
+        
       </div>
       </section>
       

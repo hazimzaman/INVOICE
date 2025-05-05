@@ -3,6 +3,7 @@ import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/
 import { Invoice } from '@/types/invoice';
 import { Settings } from '@/types/settings';
 import { formatDate } from '@/utils/dateFormat';
+import { supabase } from '@/lib/supabase';
 
 // Register fonts for PDF
 Font.register({
@@ -218,22 +219,36 @@ const styles = StyleSheet.create({
   },
 });
 
-export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> = ({ invoice, businessInfo }) => (
+export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> = ({ invoice, businessInfo }) => {
+  // Get the logo URL if it exists
+  let logoUrl = '';
+  if (businessInfo?.logo) {
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('logos')
+      .getPublicUrl(businessInfo.logo);
+    logoUrl = publicUrl || '';
+  }
 
-  <Document>
+  return (
+    <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.invoiceContainer}>
           <View style={styles.blobWrapper}>
             <Image 
               src="/Frame.png"
-              
             />
           </View>
           
           <View style={styles.header}>
             <Text style={styles.invoiceTitle}>INVOICE</Text>
             <View style={styles.companyInfo}>
-              <Image style={styles.companyLogo} src={businessInfo.business_logo} />
+              {logoUrl && (
+                <Image 
+                  style={styles.companyLogo} 
+                  src={logoUrl} 
+                />
+              )}
               <Text style={styles.companyName}>{businessInfo.business_name}</Text>
               <Text style={styles.contactName}>{businessInfo.business_address}</Text>
               <Text style={styles.companyDetail}>{businessInfo.contact_phone}</Text>
@@ -313,7 +328,8 @@ export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> 
         </View>
       </Page>
     </Document>
-); 
+  );
+}; 
 
 
 

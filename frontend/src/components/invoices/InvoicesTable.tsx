@@ -666,7 +666,7 @@ export default function InvoicesTable({
         {getFilteredAndSortedInvoices().map((invoice) => (
           <div 
             key={invoice.id} 
-            className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden"
+            className="bg-white rounded-lg shadow-md border border-gray-100 "
           >
             {/* Selection Checkbox */}
             {isSelectionMode && (
@@ -743,10 +743,10 @@ export default function InvoicesTable({
                   {openActionMenu === invoice.id && (
                     <>
                       <div 
-                        className="fixed inset-0 z-10"
+                        className="fixed inset-0 z-[60]"
                         onClick={() => setOpenActionMenu(null)}
                       />
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[70] py-1 border border-gray-200">
                         <button
                           onClick={() => {
                             setSelectedInvoice(invoice);
