@@ -17,10 +17,11 @@ export async function sendEmail(to: string, subject: string, html: string, attac
     if (!subject) throw new Error('Email subject is required');
     if (!html) throw new Error('Email content is required');
 
-    const response = await fetch('http://localhost:5000/api/send-email', {
+    const response = await fetch('http://localhost:5001/api/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         to,
@@ -40,6 +41,10 @@ export async function sendEmail(to: string, subject: string, html: string, attac
     return data;
   } catch (error) {
     console.error('Error sending email:', error);
+    // Add more detailed error logging
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('Network error - Make sure the backend server is running on port 5001');
+    }
     throw error;
   }
 }

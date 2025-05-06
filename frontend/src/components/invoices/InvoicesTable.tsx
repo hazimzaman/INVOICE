@@ -195,17 +195,22 @@ export default function InvoicesTable({
         reader.readAsDataURL(pdfBlob);
       });
 
-      // Send email
-      await sendEmail(
-        invoice.client?.email || '',
-        subject,
-        emailContent,
-        pdfBase64.split(',')[1]
-      );
+      // Send email with error handling
+      try {
+        await sendEmail(
+          invoice.client?.email || '',
+          subject,
+          emailContent,
+          pdfBase64.split(',')[1]
+        );
+        toast.success('Invoice sent successfully');
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        toast.error('Failed to send invoice email. Please try again.');
+      }
 
-      toast.success('Invoice sent successfully');
     } catch (error) {
-      console.error('Error sending invoice:', error);
+      console.error('Error in handleSendEmail:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
     } finally {
       setLoadingStates(prev => ({

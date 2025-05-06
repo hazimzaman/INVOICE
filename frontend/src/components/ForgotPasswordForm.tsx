@@ -22,7 +22,7 @@ const ForgotPasswordForm = () => {
     
     try {
       console.log('Submitting reset request:', formData);
-      const response = await fetch('http://localhost:5000/api/request-password-reset', {
+      const response = await fetch('http://localhost:5001/api/request-password-reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
