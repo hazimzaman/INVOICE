@@ -5,20 +5,34 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 require('dotenv').config();
 
+console.log('Environment check:', {
+  hasUrl: !!process.env.SUPABASE_URL,
+  hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length
+});
+
 const app = express();
 
 // Middleware
 app.use(cors({
   origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
-// Initialize Supabase
+// Initialize Supabase with service role key for admin operations
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true
+  },
+  db: {
+    schema: 'public'
+  }
+});
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -74,60 +88,52 @@ app.post('/api/send-verification', async (req, res) => {
   try {
     const { email, name, verificationToken } = req.body;
     
-    console.log('Received verification request:', { email, name, verificationToken });
-    
     const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-
-    // Verify SMTP connection
+    
+    console.log('Verification details:', {
+      email,
+      name,
+      verificationToken,
+      verificationLink
+    });
+    
+    // Test SMTP connection first
     await transporter.verify();
     console.log('SMTP connection verified');
 
-    // Send verification email
+    // Send the verification email
     const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
-      subject: 'Verify Your Email',
+      subject: 'Verify Your Email - InvoiceApp',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563EB; margin-bottom: 24px;">Welcome to InvoiceApp!</h1>
-          
-          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
-            Hi ${name},
-          </p>
-          
-          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
-            Thank you for signing up. Please verify your email address by clicking the button below:
-          </p>
-
-          <div style="text-align: center; margin: 32px 0;">
+          <h1 style="color: #2563EB;">Welcome to InvoiceApp!</h1>
+          <p>Hi ${name},</p>
+          <p>Please verify your email by clicking the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
             <a href="${verificationLink}" 
-               style="background-color: #2563EB; 
-                      color: white; 
-                      padding: 12px 24px; 
-                      text-decoration: none; 
-                      border-radius: 6px; 
-                      font-weight: bold;">
-              Verify Email Address
+               style="background-color: #2563EB; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 6px;">
+              Verify Email
             </a>
           </div>
-
-          <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">
-            If you didn't create an account, you can safely ignore this email.
+          <p style="color: #666; font-size: 14px;">
+            If you didn't create an account, please ignore this email.
           </p>
         </div>
-      `,
+      `
     });
 
-    console.log('Email sent successfully:', info.messageId);
+    console.log('Verification email sent:', info.messageId);
     res.json({ success: true, messageId: info.messageId });
+
   } catch (error) {
-    console.error('Email error details:', {
-      message: error.message,
-      code: error.code,
-      command: error.command,
-      stack: error.stack
+    console.error('Failed to send verification email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send verification email',
+      details: error.message 
     });
-    res.status(500).json({ error: 'Failed to send verification email', details: error.message });
   }
 });
 
@@ -156,117 +162,116 @@ app.post('/api/test-email', async (req, res) => {
 
 app.post('/api/test-smtp', async (req, res) => {
   try {
+    const { email } = req.body;
+    
     const transporter = nodemailer.createTransport({
-      host: 'smtp.zoho.com',
-      port: 465,
-      secure: true,
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        pass: process.env.SMTP_PASS
       },
+      debug: true
     });
-
-    await transporter.verify();
-    console.log('SMTP connection successful');
 
     const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
-      to: req.body.email,
-      subject: 'SMTP Test',
-      html: '<h1>SMTP Test Email</h1><p>If you receive this, SMTP is working correctly.</p>',
+      to: email,
+      subject: 'Test Email',
+      html: '<p>This is a test email</p>'
     });
 
     console.log('Test email sent:', info);
-    res.json({ success: true, messageId: info.messageId });
+    res.json({ message: 'Test email sent successfully', info });
   } catch (error) {
-    console.error('SMTP test error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error sending test email:', error);
+    res.status(500).json({ error: 'Failed to send test email', details: error.message });
   }
 });
 
 // Request password reset
 app.post('/api/request-password-reset', async (req, res) => {
   try {
-    const { email, name } = req.body;
-    console.log('Received reset request for:', { email, name });
+    const { email } = req.body;
+    console.log('Password reset requested for:', email);
 
-    // First check unverified_users to ensure user is verified
+    // First check if user exists
     const { data: userData, error: userError } = await supabase
       .from('unverified_users')
       .select('*')
       .eq('email', email)
-      .eq('name', name)
-      .eq('verified', true)
       .single();
 
     if (userError || !userData) {
-      console.log('User not found or not verified');
-      return res.json({ success: true }); // Security through obscurity
+      console.log('User not found:', email);
+      // Don't reveal if user exists
+      return res.json({ message: 'If an account exists, a reset link will be sent.' });
     }
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-
-    // Store reset token in Supabase
+    
+    // Store reset token in database
     const { error: tokenError } = await supabase
       .from('password_reset_tokens')
       .insert({
         user_id: userData.id,
         token: resetToken,
-        expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour expiry
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
       });
 
     if (tokenError) {
-      console.error('Token storage error:', tokenError);
-      throw tokenError;
+      console.error('Error storing reset token:', tokenError);
+      throw new Error('Failed to process reset request');
     }
 
-    // Send reset email using our SMTP
-    await transporter.sendMail({
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    // Send email using existing transporter
+    const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
-      subject: 'Reset Your Password - InvoiceApp',
+      subject: 'Reset Your Password - Invoice App',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563EB; margin-bottom: 24px;">Reset Your Password</h1>
-          
-          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
-            Hi ${name},
-          </p>
-          
-          <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
-            We received a request to reset your password. Click the button below to set a new password:
-          </p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #333;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="color: #2563eb; margin: 0; font-size: 24px;">Reset Your Password</h2>
+          </div>
 
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" 
-               style="background-color: #2563EB; 
-                      color: white; 
-                      padding: 12px 24px; 
-                      text-decoration: none; 
-                      border-radius: 6px; 
-                      font-weight: bold;">
+          <div style="margin-bottom: 30px;">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+              Hello ${userData.name},<br><br>
+              We received a request to reset your password. Click the button below to set a new password:
+            </p>
+          </div>
+
+          <div style="text-align: center; margin-bottom: 30px;">
+            <a href="${resetLink}" 
+               style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 6px; font-weight: bold;">
               Reset Password
             </a>
           </div>
 
-          <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">
-            If you didn't request this password reset, you can safely ignore this email.
-            The link will expire in 1 hour.
-          </p>
+          <div style="margin-bottom: 30px;">
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
+              If you didn't request this password reset, you can safely ignore this email.
+            </p>
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
+              For security, this link will expire in 24 hours.
+            </p>
+          </div>
         </div>
       `
     });
 
-    console.log('Reset email sent successfully');
-    res.json({ success: true });
+    console.log('Reset email sent:', info.messageId);
+    res.json({ message: 'If an account exists, a reset link will be sent.' });
 
   } catch (error) {
-    console.error('Password reset request error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process password reset request',
-      details: error.message 
-    });
+    console.error('Error in password reset:', error);
+    res.status(500).json({ error: 'Failed to process reset request' });
   }
 });
 
@@ -349,57 +354,169 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
-// Verify email endpoint
+// Add this endpoint to handle email verification
 app.post('/api/verify-email', async (req, res) => {
   try {
-    const { token } = req.body;
-    
-    // Get user data from unverified_users
+    const { token, password } = req.body;
+    console.log('Starting verification process for token:', token);
+
+    // Check if token exists
+    if (!token) {
+      throw new Error('No verification token provided');
+    }
+
+    // Check if password exists
+    if (!password) {
+      throw new Error('No password provided');
+    }
+
+    // Get user from unverified_users with detailed logging
     const { data: userData, error: fetchError } = await supabase
       .from('unverified_users')
       .select('*')
       .eq('verification_token', token)
-      .eq('verified', false)
       .single();
 
-    if (fetchError || !userData) {
-      throw new Error('Invalid or expired verification token');
+    console.log('Database query result:', {
+      hasData: !!userData,
+      error: fetchError,
+      tokenUsed: token,
+      userEmail: userData?.email
+    });
+
+    if (fetchError) {
+      console.error('Database error:', fetchError);
+      throw new Error(`Database error: ${fetchError.message}`);
     }
 
-    // Create auth user in Supabase
+    if (!userData) {
+      throw new Error('No user found with this verification token');
+    }
+
+    if (userData.verified) {
+      throw new Error('Email already verified');
+    }
+
+    // Create verified user in Supabase auth
     const { data: authData, error: signupError } = await supabase.auth.signUp({
       email: userData.email,
-      password: userData.password,
+      password: password, // Use the actual password for auth
       options: {
         data: {
-          name: userData.name
+          name: userData.name,
+          password_uuid: userData.password_uuid // Store UUID reference
         }
       }
     });
 
     if (signupError) {
-      throw new Error('Failed to create auth account');
+      console.error('Auth signup error:', signupError);
+      throw new Error('Failed to create account');
     }
 
     // Update unverified_users record
     const { error: updateError } = await supabase
       .from('unverified_users')
-      .update({ verified: true })
+      .update({ 
+        verified: true,
+        user_id: authData.user.id
+      })
       .eq('verification_token', token);
 
     if (updateError) {
+      console.error('Update error:', updateError);
       throw new Error('Failed to verify email');
     }
 
     res.json({ 
       success: true,
-      message: 'Email verified successfully. Please login.'
+      message: 'Email verified successfully'
     });
 
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error('Detailed verification error:', {
+      message: error.message,
+      stack: error.stack,
+      originalError: error
+    });
+    
     res.status(500).json({ 
-      error: 'Failed to verify email',
+      error: 'Verification failed',
+      details: error.message,
+      type: error.constructor.name
+    });
+  }
+});
+
+// Add a test route to verify Supabase connection
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('unverified_users')
+      .select('*')
+      .limit(1);
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new endpoint for sending invoice emails
+app.post('/api/send-email', async (req, res) => {
+  try {
+    const { to, subject, html, attachments } = req.body;
+    
+    console.log('Received email request:', {
+      to,
+      subject,
+      hasHtml: !!html,
+      hasAttachments: !!attachments
+    });
+
+    // Validate required fields
+    if (!to) {
+      throw new Error('Recipient email is required');
+    }
+    if (!subject) {
+      throw new Error('Email subject is required');
+    }
+    if (!html) {
+      throw new Error('Email content is required');
+    }
+
+    // Send the email
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: to,
+      subject: subject,
+      html: html,
+      attachments: attachments ? [
+        {
+          filename: 'invoice.pdf',
+          content: attachments,
+          encoding: 'base64'
+        }
+      ] : []
+    });
+
+    console.log('Email sent successfully:', {
+      messageId: info.messageId,
+      to: to,
+      subject: subject
+    });
+
+    res.json({ 
+      success: true, 
+      messageId: info.messageId 
+    });
+
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send email',
       details: error.message 
     });
   }

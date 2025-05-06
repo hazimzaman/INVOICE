@@ -15,6 +15,7 @@ import { sendEmail } from '@/utils/email';
 import { formatDate } from '@/utils/dateFormat';
 import { Settings } from '@/types/settings';
 import DownloadConfirmationModal from './DownloadConfirmationModal';
+import { parseEmailTemplate } from '@/utils/emailTemplate';
 
 interface InvoicesTableProps {
   searchQuery: string;
@@ -28,6 +29,12 @@ type SortOrder = 'asc' | 'desc';
 type SortField = 'date' | 'amount' | 'status';
 type FilterType = 'all' | 'highest_paid' | 'lowest_paid' | 'latest' | 'oldest' | 'status';
 
+interface LoadingState {
+  download: boolean;
+  email: boolean;
+  delete: boolean;
+}
+
 export default function InvoicesTable({ 
   searchQuery, 
   filterType, 
@@ -37,7 +44,7 @@ export default function InvoicesTable({
 }: InvoicesTableProps) {
   const dispatch = useAppDispatch();
   const { invoices, loading } = useAppSelector((state) => state.invoices);
-  const { data: settings } = useAppSelector((state) => state.settings);
+  const settings = useAppSelector(state => state.settings.data);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -47,13 +54,7 @@ export default function InvoicesTable({
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-  const [loadingStates, setLoadingStates] = useState<{
-    [key: string]: {
-      download: boolean;
-      email: boolean;
-      delete: boolean;
-    };
-  }>({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, LoadingState>>({});
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -170,32 +171,42 @@ export default function InvoicesTable({
         [invoice.id]: { ...prev[invoice.id], email: true }
       }));
 
-      if (!invoice.client?.email) {
-        throw new Error('Client email is required');
-      }
+      // Generate email subject
+      const subject = settings?.email_subject
+        ? settings.email_subject
+            .replace('{invoice_number}', invoice.invoice_number)
+            .replace('{business_name}', settings?.business_name || '')
+        : `Invoice ${invoice.invoice_number} from ${settings?.business_name || 'Our Company'}`;
 
-      const pdfBlob = await generatePDF(invoice, settings || defaultSettings);
+      // Generate email content
+      const emailContent = parseEmailTemplate(settings?.email_template || '', {
+        clientName: invoice.client?.name || '',
+        invoiceNumber: invoice.invoice_number,
+        amount: `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
+        dueDate: invoice.due_date || formatDate(invoice.date),
+        businessName: settings?.business_name || ''
+      });
+
+      // Generate PDF
+      const pdfBlob = await generatePDF(invoice, settings!);
+      const pdfBase64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(pdfBlob);
+      });
 
-      reader.onloadend = async () => {
-        const base64data = reader.result?.toString().split(',')[1];
+      // Send email
+      await sendEmail(
+        invoice.client?.email || '',
+        subject,
+        emailContent,
+        pdfBase64.split(',')[1]
+      );
 
-        const emailParams = {
-        to: invoice.client.email,
-          subject: replaceTemplateVariables(settings?.email_subject || 'Invoice {{invoice_number}} from {{business_name}}', invoice, settings),
-          body: replaceTemplateVariables(settings?.email_template || '', invoice, settings),
-        attachments: [{
-          filename: `invoice-${invoice.invoice_number}.pdf`,
-            content: base64data as string
-        }]
-        };
-
-        await sendEmail(emailParams);
-        toast.success('Email sent successfully');
-      };
+      toast.success('Invoice sent successfully');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send email');
+      console.error('Error sending invoice:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
     } finally {
       setLoadingStates(prev => ({
         ...prev,

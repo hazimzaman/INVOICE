@@ -8,64 +8,80 @@ interface EmailParams {
   }>;
 }
 
-export const sendEmail = async (params: EmailParams): Promise<void> => {
+export async function sendEmail(to: string, subject: string, html: string, attachments?: string) {
   try {
-    const response = await fetch('/api/send-email', {
+    console.log('Sending email with params:', { to, subject, hasAttachments: !!attachments });
+    
+    // Validation
+    if (!to) throw new Error('Recipient email is required');
+    if (!subject) throw new Error('Email subject is required');
+    if (!html) throw new Error('Email content is required');
+
+    const response = await fetch('http://localhost:5000/api/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        attachments
+      }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to send email');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send email');
     }
+
+    const data = await response.json();
+    console.log('Email sent successfully:', data);
+    return data;
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;
   }
-};
+}
 
 export const getPasswordResetEmailContent = (resetLink: string) => {
   return {
     subject: 'Reset Your Invoice App Password',
     body: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a56db; margin-bottom: 20px;">Reset Your Password</h2>
-        
-        <p style="color: #374151; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-          Hello,
-        </p>
-        
-        <p style="color: #374151; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-          We received a request to reset your password for your Invoice App account. If you didn't make this request, you can safely ignore this email.
-        </p>
-        
-        <p style="color: #374151; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-          To reset your password, click the button below:
-        </p>
-        
-        <a href="${resetLink}" 
-           style="display: inline-block; background-color: #1a56db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-bottom: 30px;">
-          Reset Password
-        </a>
-        
-        <p style="color: #374151; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-          This link will expire in 24 hours for security reasons.
-        </p>
-        
-        <p style="color: #374151; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-          If you're having trouble clicking the button, copy and paste this URL into your browser:
-          <br>
-          <span style="color: #1a56db;">${resetLink}</span>
-        </p>
-        
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-        
-        <p style="color: #6b7280; font-size: 14px;">
-          If you didn't request a password reset, please ignore this email or contact support if you have concerns.
-        </p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #333;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h2 style="color: #2563eb; margin: 0; font-size: 24px;">Reset Your Password</h2>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            We received a request to reset your password for your Invoice App account. 
+            Click the button below to reset your password:
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px;">
+          <a href="${resetLink}" 
+             style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; 
+                    text-decoration: none; border-radius: 6px; font-weight: bold;">
+            Reset Password
+          </a>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+          <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
+            If you didn't request this password reset, you can safely ignore this email.
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
+            For security, this link will expire in 24 hours.
+          </p>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+            This is an automated email from Invoice App. Please do not reply to this email.
+          </p>
+        </div>
       </div>
     `
   };

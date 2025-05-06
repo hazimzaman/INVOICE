@@ -1,137 +1,117 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import crypto from 'crypto';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { supabase } from '@/lib/supabase';
 
-const SignupForm = () => {
+// Function to generate a random token
+function generateToken(length = 32) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+// Function to generate UUID v4
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+export default function SignupForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-  });
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      
-      if (accessToken && refreshToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
-      }
-    }
-  }, []);
-
-  const generateVerificationToken = () => {
-    return crypto.randomBytes(32).toString('hex');
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
-    
-    try {
-      console.log('Starting signup process...');
-      
-      // Generate verification token
-      const verificationToken = generateVerificationToken();
-      console.log('Generated token:', verificationToken);
 
-      // First, check if email exists in unverified_users
-      const { data: existingUser, error: checkError } = await supabase
+    try {
+      const verificationToken = generateToken();
+      console.log('Generated token:', verificationToken);
+      const passwordUUID = generateUUID(); // Generate UUID for password
+
+      // First, check if email exists
+      const { data: existingUser } = await supabase
         .from('unverified_users')
         .select('*')
-        .eq('email', formData.email)
-        .maybeSingle();
-
-      console.log('Check existing user result:', { existingUser, checkError });
+        .eq('email', email)
+        .single();
 
       if (existingUser) {
-        throw new Error('Email already registered. Please check your email for verification link.');
+        throw new Error('Email already registered');
       }
 
-      const newUserData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        verification_token: verificationToken,
-        verified: false
-      };
-
-      console.log('Attempting to insert:', newUserData);
-
-      // Insert into unverified_users table
-      const { data, error: insertError } = await supabase
+      // Save to unverified_users with password_uuid
+      const { data: insertedUser, error: userError } = await supabase
         .from('unverified_users')
-        .insert(newUserData)
-        .select();
+        .insert({
+          email,
+          name,
+          password_uuid: passwordUUID,
+          verification_token: verificationToken,
+          verified: false
+        })
+        .select()
+        .single();
 
-      console.log('Insert response:', { data, insertError });
+      console.log('Inserted user:', {
+        success: !userError,
+        userData: insertedUser,
+        error: userError
+      });
 
-      if (insertError) {
-        console.error('Insert error details:', {
-          code: insertError.code,
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint
-        });
-        throw new Error(`Failed to create account: ${insertError.message || 'Unknown error'}`);
+      // Store the actual password temporarily in localStorage for verification
+      localStorage.setItem(`temp_password_${verificationToken}`, password);
+      console.log('Stored password for token:', verificationToken);
+
+      if (userError) {
+        console.error('User creation error:', userError);
+        throw new Error(userError.message);
       }
 
-      // Send verification email using our backend API
-      const response = await fetch('http://localhost:5000/api/send-verification', {
+      // Send verification email
+      const response = await fetch('http://localhost:5001/api/send-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
-          name: formData.name,
-          verificationToken: verificationToken
+          email,
+          name,
+          verificationToken
         }),
       });
 
       if (!response.ok) {
-        // Cleanup: remove the unverified user if email fails
-        const { error: deleteError } = await supabase
+        // Cleanup if email sending fails
+        await supabase
           .from('unverified_users')
           .delete()
-          .eq('email', formData.email);
-
-        console.log('Cleanup after email error:', { deleteError });
+          .eq('email', email);
         
-        throw new Error('Failed to send verification email. Please try again.');
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to send verification email');
       }
 
-      setSuccess('Please check your email for verification link.');
-      
-      // Clear form
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-      });
-
-      // Redirect to verification pending page
-      setTimeout(() => {
-        router.push('/verify-pending');
-      }, 3000);
+      // Clear form and show success
+      setEmail('');
+      setName('');
+      setPassword('');
+      alert('Please check your email to verify your account');
+      router.push('/verify-pending');
 
     } catch (error) {
       console.error('Signup error:', error);
@@ -151,12 +131,6 @@ const SignupForm = () => {
         </div>
       )}
 
-      {success && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-          {success}
-        </div>
-      )}
-
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
           Name
@@ -165,8 +139,8 @@ const SignupForm = () => {
           type="text"
           id="name"
           className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           required
         />
       </div>
@@ -179,8 +153,8 @@ const SignupForm = () => {
           type="email"
           id="email"
           className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
       </div>
@@ -196,8 +170,8 @@ const SignupForm = () => {
           required
           className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
           placeholder="Password"
-          value={formData.password}
-          onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
         <button
           type="button"
@@ -218,6 +192,4 @@ const SignupForm = () => {
       </button>
     </form>
   );
-};
-
-export default SignupForm; 
+} 

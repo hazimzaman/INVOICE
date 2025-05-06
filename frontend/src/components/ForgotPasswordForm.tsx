@@ -27,17 +27,19 @@ const ForgotPasswordForm = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email
+        }),
       });
 
       const data = await response.json();
       console.log('Reset response:', data);
 
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to send reset email');
+        throw new Error(data.error || 'Failed to send reset email');
       }
 
-      setSuccess('If your email and name match our records, you will receive a password reset link shortly. Please check your inbox and spam folder.');
+      setSuccess('If an account exists, a password reset link will be sent to your email.');
       
       // Clear form
       setFormData({
@@ -46,7 +48,7 @@ const ForgotPasswordForm = () => {
       });
 
     } catch (error) {
-      console.error('Password reset error:', error);
+      console.error('Reset error:', error);
       setError(error instanceof Error ? error.message : 'Failed to send reset email');
     } finally {
       setLoading(false);
