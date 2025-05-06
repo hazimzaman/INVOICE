@@ -49,6 +49,9 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
+  // Add state for unsaved total
+  const [runningTotal, setRunningTotal] = useState(0);
+
   const handleClientChange = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     setSelectedClient(client || null);
@@ -62,12 +65,15 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   };
 
   const addItem = () => {
-    if (!isItemValid()) return;
+    if (!newItem.name || newItem.amount <= 0) return;
     
     setFormData(prev => ({
       ...prev,
       items: [...prev.items, newItem]
     }));
+    
+    // Update running total
+    setRunningTotal(prev => prev + newItem.amount);
     
     setNewItem({
       name: '',
@@ -252,10 +258,21 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
                     type="number"
                     placeholder="Amount"
                     value={newItem.amount || ''}
-                    onChange={(e) => setNewItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                    className="w-full h-[55px] px-4 border border-[var(--color-gray-300)] rounded"
+                    onChange={(e) => {
+                      const amount = parseFloat(e.target.value) || 0;
+                      setNewItem(prev => ({ ...prev, amount }));
+                    }}
+                    className="p-2 border border-[var(--color-gray-300)] rounded w-full"
                   />
                 </div>
+
+                {/* Show running total */}
+                {newItem.amount > 0 && (
+                  <div className="text-right text-gray-400 text-sm mt-1">
+                    amount: {selectedClient?.currency || '$'}{(calculateTotal() + newItem.amount).toFixed(2)}
+                  </div>
+                )}
+               
               </div>
 
               {/* Total */}

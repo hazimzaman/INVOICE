@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { fetchInvoices } from '@/store/slices/invoicesSlice';
+import { fetchClients } from '@/store/slices/clientsSlice';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import InvoicesTable from './InvoicesTable';
@@ -29,6 +30,7 @@ export default function InvoicesPage() {
         return;
       }
       dispatch(fetchInvoices());
+      dispatch(fetchClients());
     };
 
     checkAuth();
@@ -38,7 +40,7 @@ export default function InvoicesPage() {
   <section className='w-full pt-35 pb-20'>
 <div className="p-6 max-w-[1240px] w-full mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div className="max-w-[1240px] w-full mx-auto  flex flex-col justify-between items-center gap-2 md:flex-row ">
+      <div className="max-w-[1240px] w-full mx-auto  flex flex-col justify-between items-center gap-6 md:flex-row ">
         <h1 className="text-2xl font-bold">Invoices</h1>
         
         <div className="w-full flex gap-2 flex-col sm:flex-row">
@@ -134,7 +136,7 @@ export default function InvoicesPage() {
                         </button>
                         
                         <div className="pt-2 border-t">
-                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                          <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <FiDollarSign className="w-4 h-4 mr-2" />
                             Filter by Status
                           </label>

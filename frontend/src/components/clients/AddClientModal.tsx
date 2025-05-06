@@ -42,8 +42,16 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
 
   if (!isOpen) return null;
 
+  const currencies = [
+    { value: 'USD', label: 'USD - US Dollar' },
+    { value: 'EUR', label: 'EUR - Euro' },
+    { value: 'GBP', label: 'GBP - British Pound' },
+    { value: 'PHP', label: 'PHP - Philippine Peso' },
+    { value: 'CAD', label: 'CAD - Canadian Dollar' },
+  ];
+
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 transition-all duration-300">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
       <div className="m-4 bg-white rounded-lg w-full max-w-[600px] p-6 shadow-xl transform transition-all duration-300 scale-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Add New Client</h2>
@@ -121,13 +129,17 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
               Currency
             </label>
             <select
-              className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              className="w-full p-2 border border-[var(--color-gray-300)] rounded"
+              required
             >
-              <option value="€">EUR (€)</option>
-              <option value="$">USD ($)</option>
-              <option value="£">GBP (£)</option>
+              <option value="">Select currency</option>
+              {currencies.map(currency => (
+                <option key={currency.value} value={currency.value}>
+                  {currency.label}
+                </option>
+              ))}
             </select>
           </div>
 

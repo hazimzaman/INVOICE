@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Invoice } from '@/types/invoice';
 import { Settings } from '@/types/settings';
 import { formatDate } from '@/utils/dateFormat';
@@ -26,10 +26,9 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
+    padding: 40,
     fontFamily: 'Montserrat',
-    padding: '40 40 20 40',
     fontSize: 10.5,
-    position: 'relative',
   },
   invoiceContainer: {
     position: 'relative',
@@ -222,112 +221,110 @@ const styles = StyleSheet.create({
 export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> = ({ invoice, businessInfo }) => {
   // Get the logo URL if it exists
   let logoUrl = '';
-  if (businessInfo?.logo) {
+  if (businessInfo?.business_logo) {
     const { data: { publicUrl } } = supabase
       .storage
-      .from('logos')
-      .getPublicUrl(businessInfo.logo);
+      .from('business-logos')
+      .getPublicUrl(businessInfo.business_logo);
     logoUrl = publicUrl || '';
   }
 
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.invoiceContainer}>
-          <View style={styles.blobWrapper}>
-            <Image 
-              src="/Frame.png"
-            />
-          </View>
-          
-          <View style={styles.header}>
-            <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <View style={styles.companyInfo}>
-              {logoUrl && (
-                <Image 
-                  style={styles.companyLogo} 
-                  src={logoUrl} 
-                />
-              )}
-              <Text style={styles.companyName}>{businessInfo.business_name}</Text>
-              <Text style={styles.contactName}>{businessInfo.business_address}</Text>
-              <Text style={styles.companyDetail}>{businessInfo.contact_phone}</Text>
-              <Text style={styles.companyDetail}>{businessInfo.business_address}</Text>
-              {businessInfo.wise_email && (
-                <Text style={styles.wise}>
-                  <Text style={styles.wiseLabel}>WISE: </Text>
-                  {businessInfo.wise_email}
-                </Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.invoiceDetails}>
-            <View style={styles.leftDetails}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Invoice No:</Text>
-                <Text>{invoice.invoice_number} {invoice.client?.name}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Bill to:</Text>
-                <View style={styles.billTo}>
-                  <Text style={styles.clientCompanyName}>{invoice.client?.name}</Text>
-                  <Text>{invoice.client?.company}</Text>
-                </View>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Address:</Text>
-                <Text>{invoice.client?.address}</Text>
-              </View>
-              
-            </View>
-
-            <View style={styles.rightDetails}>
-              <View style={styles.dateContainer}>
-                <Text style={styles.detailLabel}>Date:</Text>
-                <Text> {formatDate(invoice.date)}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.table}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <Text style={styles.tableCell}>#</Text>
-              <Text style={styles.tableCell2}>Item</Text>
-              <Text style={styles.tableCell}>Price</Text>
-              <Text style={styles.tableCellAmount}>Amount</Text>
-            </View>
-            {(invoice?.items || []).map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{index + 1}.</Text>
-                <Text style={styles.tableCell2}>
-                  <Text style={styles.itemName}>{item?.name}</Text>
-                  {item?.description && (
-                    <Text>{'\n'}{item?.description}</Text>
-                  )}
-                </Text>
-                <Text style={styles.tableCell}>
-                {invoice.client?.currency || '€'}{item.amount.toFixed(2)}
-                </Text>
-                <Text style={styles.tableCellAmount}>
-                {invoice.client?.currency || '€'}{item.amount.toFixed(2)}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.totalSection}>
-            <Text style={styles.totalLabel}>
-            Total: {invoice.client?.currency || '€'}{invoice.total.toFixed(2)}
-            </Text>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>For any questions, please contact: {businessInfo.contact_email}</Text>
+    <View style={styles.page}>
+      <View style={styles.invoiceContainer}>
+        <View style={styles.blobWrapper}>
+          <Image 
+            src="/Frame.png"
+          />
+        </View>
+        
+        <View style={styles.header}>
+          <Text style={styles.invoiceTitle}>INVOICE</Text>
+          <View style={styles.companyInfo}>
+            {logoUrl && (
+              <Image 
+                style={styles.companyLogo} 
+                src={logoUrl} 
+              />
+            )}
+            <Text style={styles.companyName}>{businessInfo.business_name}</Text>
+            <Text style={styles.contactName}>{businessInfo.business_address}</Text>
+            <Text style={styles.companyDetail}>{businessInfo.contact_phone}</Text>
+            <Text style={styles.companyDetail}>{businessInfo.business_address}</Text>
+            {businessInfo.wise_email && (
+              <Text style={styles.wise}>
+                <Text style={styles.wiseLabel}>WISE: </Text>
+                {businessInfo.wise_email}
+              </Text>
+            )}
           </View>
         </View>
-      </Page>
-    </Document>
+
+        <View style={styles.invoiceDetails}>
+          <View style={styles.leftDetails}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Invoice No:</Text>
+              <Text>{invoice.invoice_number} {invoice.client?.name}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Bill to:</Text>
+              <View style={styles.billTo}>
+                <Text style={styles.clientCompanyName}>{invoice.client?.name}</Text>
+                <Text>{invoice.client?.company}</Text>
+              </View>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Address:</Text>
+              <Text>{invoice.client?.address}</Text>
+            </View>
+            
+          </View>
+
+          <View style={styles.rightDetails}>
+            <View style={styles.dateContainer}>
+              <Text style={styles.detailLabel}>Date:</Text>
+              <Text> {formatDate(invoice.date)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCell}>#</Text>
+            <Text style={styles.tableCell2}>Item</Text>
+            <Text style={styles.tableCell}>Price</Text>
+            <Text style={styles.tableCellAmount}>Amount</Text>
+          </View>
+          {(invoice?.items || []).map((item, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{index + 1}.</Text>
+              <Text style={styles.tableCell2}>
+                <Text style={styles.itemName}>{item?.name}</Text>
+                {item?.description && (
+                  <Text>{'\n'}{item?.description}</Text>
+                )}
+              </Text>
+              <Text style={styles.tableCell}>
+              {invoice.client?.currency || '€'}{item.amount.toFixed(2)}
+              </Text>
+              <Text style={styles.tableCellAmount}>
+              {invoice.client?.currency || '€'}{item.amount.toFixed(2)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.totalSection}>
+          <Text style={styles.totalLabel}>
+          Total: {invoice.client?.currency || '€'}{invoice.total.toFixed(2)}
+          </Text>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>For any questions, please contact: {businessInfo.contact_email}</Text>
+        </View>
+      </View>
+    </View>
   );
 }; 
 

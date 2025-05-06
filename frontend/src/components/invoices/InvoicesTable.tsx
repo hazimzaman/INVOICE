@@ -168,7 +168,7 @@ export default function InvoicesTable({
     try {
       setLoadingStates(prev => ({
         ...prev,
-        [invoice.id]: { ...prev[invoice.id], email: true }
+        [`send_${invoice.id}`]: { download: false, email: true, delete: false }
       }));
 
       // Generate email subject
@@ -215,7 +215,7 @@ export default function InvoicesTable({
     } finally {
       setLoadingStates(prev => ({
         ...prev,
-        [invoice.id]: { ...prev[invoice.id], email: false }
+        [`send_${invoice.id}`]: { download: false, email: false, delete: false }
       }));
     }
   };
@@ -326,7 +326,10 @@ export default function InvoicesTable({
       for (const id of selectedEmailInvoices) {
         const invoice = invoices.find(i => i.id === id);
         if (!invoice) continue;
-        setLoadingStates(prev => ({ ...prev, [`send_${id}`]: true }));
+        setLoadingStates(prev => ({
+          ...prev,
+          [`send_${id}`]: { download: false, email: true, delete: false }
+        }));
         await handleSendEmail(invoice);
       }
       setSelectedEmailInvoices([]);
@@ -343,9 +346,15 @@ export default function InvoicesTable({
       for (const id of selectedDownloadInvoices) {
         const invoice = invoices.find(i => i.id === id);
         if (!invoice) continue;
-        setLoadingStates(prev => ({ ...prev, [`download_${id}`]: true }));
+        setLoadingStates(prev => ({
+          ...prev,
+          [`download_${id}`]: { download: true, email: false, delete: false }
+        }));
         await handleDownloadPDF(invoice);
-        setLoadingStates(prev => ({ ...prev, [`download_${id}`]: false }));
+        setLoadingStates(prev => ({
+          ...prev,
+          [`download_${id}`]: { download: false, email: false, delete: false }
+        }));
       }
       setSelectedDownloadInvoices([]);
       setIsMultiDownloadMode(false);
@@ -435,6 +444,11 @@ export default function InvoicesTable({
     setEditingStatus(invoiceId);
   };
 
+  const handleCardClick = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsViewModalOpen(true);
+  };
+
   if (loading) {
     return <div className="text-center py-4">Loading...</div>;
   }
@@ -457,10 +471,11 @@ export default function InvoicesTable({
                         : []
                       );
                     }}
-                    className="rounded border-gray-300 text-blue-600"
+                    className="rounded border-gray-300 text-blue-600 cursor-pointer"
                   />
                 </th>
               )}
+              
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase ">Amount</th>
@@ -484,7 +499,7 @@ export default function InvoicesTable({
                             : [...prev, invoice.id]
                         );
                       }}
-                      className="rounded border-gray-300 text-blue-600"
+                      className="rounded border-gray-300 text-blue-600 cursor-pointer"
                     />
                   </td>
                 )}
@@ -496,7 +511,7 @@ export default function InvoicesTable({
                     <input
                       type="date"
                       defaultValue={invoice.date}
-                      className="w-full p-1 border rounded-md"
+                      className="w-full p-1 border rounded-md cursor-pointer"
                       onChange={(e) => {
                         handleDateUpdate(invoice.id, e.target.value);
                         setEditingDate(null);
@@ -507,7 +522,7 @@ export default function InvoicesTable({
                   ) : (
                     <div 
                       onClick={() => handleDateClick(invoice.id, invoice.date)}
-                      className="cursor-pointer hover:text-blue-600 "
+                      className=" hover:text-blue-600 cursor-pointer"
                     >
                       {formatDate(invoice.date)}
                     </div>
@@ -522,7 +537,7 @@ export default function InvoicesTable({
                         setEditingStatus(null);
                       }}
                       onBlur={() => setEditingStatus(null)}
-                      className="w-full p-1 border rounded-md"
+                      className="w-full p-3.5 border rounded-md cursor-pointer"
                       autoFocus
                     >
                       <option value="pending">Pending</option>
@@ -532,7 +547,7 @@ export default function InvoicesTable({
                   ) : (
                     <div 
                       onClick={() => handleStatusClick(invoice.id)}
-                      className="cursor-pointer"
+                      className="cursor-pointer "
                     >
                       <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
@@ -548,7 +563,7 @@ export default function InvoicesTable({
                         setSelectedInvoice(invoice);
                         setIsViewModalOpen(true);
                       }}
-                      className="p-2 text-blue-500 hover:text-blue-700 transition-colors"
+                      className="p-2 text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
                     >
                       <FiEye className="w-5 h-5" />
                     </button>
@@ -557,14 +572,14 @@ export default function InvoicesTable({
                         setSelectedInvoice(invoice);
                         setIsEditModalOpen(true);
                       }}
-                      className="p-2 text-indigo-500 hover:text-indigo-700 transition-colors"
+                      className="p-2 text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
                     >
                       <FiEdit2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDownloadPDF(invoice)}
                       disabled={loadingStates[invoice.id]?.download}
-                      className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative"
+                      className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative cursor-pointer"
                     >
                       {loadingStates[invoice.id]?.download ? (
                         <div className="animate-spin">
@@ -577,7 +592,7 @@ export default function InvoicesTable({
                     <button
                       onClick={() => handleSendEmail(invoice)}
                       disabled={loadingStates[invoice.id]?.email}
-                      className="p-2 text-green-500 hover:text-green-700 transition-colors relative"
+                      className="p-2 text-green-500 hover:text-green-700 transition-colors relative cursor-pointer"
                     >
                       {loadingStates[invoice.id]?.email ? (
                         <div className="animate-spin">
@@ -590,7 +605,7 @@ export default function InvoicesTable({
                     <button
                       onClick={() => handleDelete(invoice)}
                       disabled={loadingStates[invoice.id]?.delete}
-                      className="p-2 text-red-500 hover:text-red-700 transition-colors relative"
+                      className="p-2 text-red-500 hover:text-red-700 transition-colors relative cursor-pointer"
                     >
                       {loadingStates[invoice.id]?.delete ? (
                         <div className="animate-spin text-red-500">
@@ -606,7 +621,7 @@ export default function InvoicesTable({
                   <div className="lg:hidden relative">
                     <button
                       onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
-                      className="p-2 text-gray-600 hover:text-gray-800"
+                      className="p-2 text-gray-600 hover:text-gray-800 cursor-pointer"
                     >
                       <FiMoreVertical className="w-5 h-5" />
                     </button>
@@ -625,7 +640,7 @@ export default function InvoicesTable({
                               setIsViewModalOpen(true);
                               setOpenActionMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                           >
                             <FiEye className="w-4 h-4" /> View
                           </button>
@@ -635,7 +650,7 @@ export default function InvoicesTable({
                               setIsEditModalOpen(true);
                               setOpenActionMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                           >
                             <FiEdit2 className="w-4 h-4" /> Edit
                           </button>
@@ -644,7 +659,7 @@ export default function InvoicesTable({
                               handleDownloadPDF(invoice);
                               setOpenActionMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                           >
                             <FiDownload className="w-4 h-4" /> Download
                           </button>
@@ -653,7 +668,7 @@ export default function InvoicesTable({
                               handleSendEmail(invoice);
                               setOpenActionMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                           >
                             <FiMail className="w-4 h-4" /> Send Email
                           </button>
@@ -662,7 +677,7 @@ export default function InvoicesTable({
                               handleDelete(invoice);
                               setOpenActionMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                           >
                             <FiTrash2 className="w-4 h-4" /> Delete
                           </button>
@@ -682,7 +697,8 @@ export default function InvoicesTable({
         {getFilteredAndSortedInvoices().map((invoice) => (
           <div 
             key={invoice.id} 
-            className="bg-white rounded-lg shadow-md border border-gray-100 "
+            className="bg-white rounded-lg shadow-md border border-gray-100 cursor-pointer"
+            onClick={() => handleCardClick(invoice)}
           >
             {/* Selection Checkbox */}
             {isSelectionMode && (
@@ -697,7 +713,7 @@ export default function InvoicesTable({
                         : [...prev, invoice.id]
                     );
                   }}
-                  className="rounded border-gray-300 text-blue-600"
+                  className="rounded border-gray-300 text-blue-600 cursor-pointer"
                 />
               </div>
             )}
@@ -727,7 +743,7 @@ export default function InvoicesTable({
                         setEditingStatus(null);
                       }}
                       onBlur={() => setEditingStatus(null)}
-                      className="w-full p-1 border rounded-md"
+                      className="w-full p-1 border rounded-md cursor-pointer"
                       autoFocus
                     >
                       <option value="pending">Pending</option>
@@ -750,7 +766,7 @@ export default function InvoicesTable({
                 <div className="relative">
                   <button
                     onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
-                    className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
+                    className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100 cursor-pointer"
                   >
                     <FiMoreVertical className="w-5 h-5" />
                   </button>
@@ -769,7 +785,7 @@ export default function InvoicesTable({
                             setIsViewModalOpen(true);
                             setOpenActionMenu(null);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                         >
                           <FiEye className="w-4 h-4" /> View
                         </button>
@@ -779,7 +795,7 @@ export default function InvoicesTable({
                             setIsEditModalOpen(true);
                             setOpenActionMenu(null);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                         >
                           <FiEdit2 className="w-4 h-4" /> Edit
                         </button>
@@ -789,7 +805,7 @@ export default function InvoicesTable({
                             setOpenActionMenu(null);
                           }}
                           disabled={loadingStates[invoice.id]?.download}
-                          className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                         >
                           {loadingStates[invoice.id]?.download ? (
                             <FiLoader className="w-4 h-4 animate-spin" />
@@ -804,7 +820,7 @@ export default function InvoicesTable({
                             setOpenActionMenu(null);
                           }}
                           disabled={loadingStates[invoice.id]?.email}
-                          className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                         >
                           {loadingStates[invoice.id]?.email ? (
                             <FiLoader className="w-4 h-4 animate-spin" />
@@ -819,7 +835,7 @@ export default function InvoicesTable({
                             setOpenActionMenu(null);
                           }}
                           disabled={loadingStates[invoice.id]?.delete}
-                          className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                         >
                           {loadingStates[invoice.id]?.delete ? (
                             <FiLoader className="w-4 h-4 animate-spin" />

@@ -16,6 +16,11 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
   const dispatch = useAppDispatch();
   const { clients } = useAppSelector((state) => state.clients);
 
+  // Move calculateTotal before state initialization
+  const calculateTotal = () => {
+    return formData?.items?.reduce((sum, item) => sum + item.amount, 0) || 0;
+  };
+
   const [formData, setFormData] = useState({
     client_id: invoice.client_id,
     invoice_number: invoice.invoice_number,
@@ -31,6 +36,9 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
     description: '',
     amount: 0
   });
+
+  // Now we can use calculateTotal here
+  const [runningTotal, setRunningTotal] = useState(calculateTotal());
 
   // Reset form when invoice changes
   useEffect(() => {
@@ -53,6 +61,9 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
       items: [...prev.items, newItem]
     }));
     
+    // Update running total
+    setRunningTotal(prev => prev + newItem.amount);
+    
     setNewItem({
       name: '',
       description: '',
@@ -65,10 +76,6 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
-  };
-
-  const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => sum + item.amount, 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,7 +211,10 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                       type="number"
                       placeholder="Amount"
                       value={newItem.amount || ''}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        setNewItem(prev => ({ ...prev, amount }));
+                      }}
                       className="p-2 border border-[var(--color-gray-300)] rounded w-full"
                     />
                     <button
@@ -216,6 +226,13 @@ export default function EditInvoiceModal({ isOpen, onClose, invoice }: EditInvoi
                     </button>
                   </div>
                 </div>
+
+                {/* Show running total */}
+                {newItem.amount > 0 && (
+                  <div className="text-right text-gray-400 text-sm mt-1">
+                    amount: ${(calculateTotal() + newItem.amount).toFixed(2)}
+                  </div>
+                )}
               </div>
 
               {/* Total */}
