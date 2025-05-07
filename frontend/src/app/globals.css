@@ -42,3 +42,81 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
   }
 }
+
+/* Add these global styles */
+button,
+input,
+select,
+textarea {
+  cursor: pointer;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+textarea {
+  cursor: text;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Interactive Elements Cursor Styles */
+button,
+select,
+input[type="submit"],
+input[type="button"],
+input[type="file"],
+input[type="checkbox"],
+input[type="radio"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Text Input Cursors */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="search"],
+input[type="url"],
+textarea {
+  cursor: text !important;
+}
+
+/* Disabled States */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+.disabled {
+  cursor: not-allowed !important;
+}
+
+/* Links */
+a {
+  cursor: pointer !important;
+}
+
+/* Table Rows with Actions */
+tr[role="button"],
+td[role="button"],
+.clickable-row {
+  cursor: pointer !important;
+}
+
+/* Custom Classes */
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+.cursor-text {
+  cursor: text !important;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}

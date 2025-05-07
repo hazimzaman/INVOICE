@@ -158,10 +158,9 @@ export default function ReportsPage() {
 
   if (!invoices.length && !clients.length) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-[1240px]">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">No Data Available</h2>
-          <p className="text-yellow-600">Start by adding some clients and invoices to see your reports.</p>
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
+        <div className="text-center text-gray-600">
+          <p className="text-lg">Start by adding some clients and invoices to see your reports.</p>
         </div>
       </div>
     );

@@ -110,11 +110,11 @@ export default function SettingsPage() {
 
   return (
     <section className="container mx-auto py-30 px-6 max-w-[1240px] w-full m-auto">
-      <h1 className="text-2xl font-bold mb-8">Settings</h1>
+      <h1 className="text-4xl font-bold mb-8">Settings</h1>
 
       <form onSubmit={handleSubmit} className="max-w-[1240px] mx-auto space-y-8">
         {/* Business Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6 hover:shadow-xl transition-shadow">
           <h2 className="text-xl font-semibold">Business Information</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -126,7 +126,7 @@ export default function SettingsPage() {
                 type="text"
                 value={settings.business_name || ''}
                 onChange={e => setSettings(prev => ({ ...prev, business_name: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
             </div>
 
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                   onChange={handleLogoUpload}
                   className="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
                            file:rounded-md file:border-0 file:text-sm file:font-medium
-                           file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                           file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
                 />
               </div>
             </div>
@@ -162,13 +162,13 @@ export default function SettingsPage() {
               value={settings.business_address || ''}
               onChange={e => setSettings(prev => ({ ...prev, business_address: e.target.value }))}
               rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             />
           </div>
         </div>
 
         {/* Contact Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6 hover:shadow-xl transition-shadow">
           <h2 className="text-xl font-semibold">Contact Details</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,7 +180,7 @@ export default function SettingsPage() {
                 type="text"
                 value={settings.contact_name || ''}
                 onChange={e => setSettings(prev => ({ ...prev, contact_name: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
             </div>
 
@@ -192,7 +192,7 @@ export default function SettingsPage() {
                 type="email"
                 value={settings.contact_email || ''}
                 onChange={e => setSettings(prev => ({ ...prev, contact_email: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function SettingsPage() {
                 type="tel"
                 value={settings.contact_phone || ''}
                 onChange={e => setSettings(prev => ({ ...prev, contact_phone: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
             </div>
 
@@ -216,14 +216,14 @@ export default function SettingsPage() {
                 type="email"
                 value={settings.wise_email || ''}
                 onChange={e => setSettings(prev => ({ ...prev, wise_email: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
             </div>
           </div>
         </div>
 
         {/* Invoice Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6 hover:shadow-xl transition-shadow">
           <h2 className="text-xl font-semibold">Invoice Settings</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                 type="text"
                 value={settings.invoice_prefix || ''}
                 onChange={e => setSettings(prev => ({ ...prev, invoice_prefix: e.target.value }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 placeholder="e.g., INV-"
               />
             </div>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                   ...prev,
                   current_invoice_num: parseInt(e.target.value) || 1
                 }))}
-                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               />
               <p className="text-sm text-gray-500 mt-1">
                 Next invoice will start from this number
@@ -268,13 +268,13 @@ export default function SettingsPage() {
               value={settings.footer_note || ''}
               onChange={e => setSettings(prev => ({ ...prev, footer_note: e.target.value }))}
               rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             />
           </div>
         </div>
 
         {/* Email Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6 hover:shadow-xl transition-shadow">
           <h2 className="text-xl font-semibold">Email Settings</h2>
           
           <div>
@@ -285,7 +285,7 @@ export default function SettingsPage() {
               type="text"
               value={settings.email_subject || ''}
               onChange={e => setSettings(prev => ({ ...prev, email_subject: e.target.value }))}
-              className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-[55px] px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               placeholder="Invoice {invoice_number} from {business_name}"
             />
           </div>
@@ -302,7 +302,7 @@ export default function SettingsPage() {
               value={settings.email_template || ''}
               onChange={e => setSettings(prev => ({ ...prev, email_template: e.target.value }))}
               rows={6}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm cursor-pointer"
               placeholder={`Dear {client_name},
 
 Please find attached invoice {invoice_number} for {total_amount}.
@@ -321,7 +321,8 @@ Best regards,
             type="submit"
             disabled={saving}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                     disabled:opacity-50 transition-colors text-lg font-medium min-w-[200px]"
+                     disabled:opacity-50 transition-colors text-lg font-medium min-w-[200px]
+                     shadow-md hover:shadow-lg transition-all cursor-pointer"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
