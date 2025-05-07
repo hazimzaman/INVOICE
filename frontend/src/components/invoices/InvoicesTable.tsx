@@ -75,6 +75,7 @@ export default function InvoicesTable({
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
+  const [emailingId, setEmailingId] = useState<string | null>(null);
 
   const defaultSettings: Settings = {
     business_name: '',
@@ -166,57 +167,27 @@ export default function InvoicesTable({
 
   const handleSendEmail = async (invoice: Invoice) => {
     try {
-      setLoadingStates(prev => ({
-        ...prev,
-        [`send_${invoice.id}`]: { download: false, email: true, delete: false }
-      }));
+      setEmailingId(invoice.id);
+      
+      await sendEmail(
+        invoice.client?.email || '',
+        settings?.email_subject || `Invoice ${invoice.invoice_number} from ${settings?.business_name || ''}`,
+        parseEmailTemplate(settings?.email_template || '', {
+          clientName: invoice.client?.name || '',
+          invoiceNumber: invoice.invoice_number,
+          amount: `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
+          dueDate: invoice.due_date || formatDate(invoice.date),
+          businessName: settings?.business_name || ''
+        }),
+        settings?.wise_email || ''
+      );
 
-      // Generate email subject
-      const subject = settings?.email_subject
-        ? settings.email_subject
-            .replace('{invoice_number}', invoice.invoice_number)
-            .replace('{business_name}', settings?.business_name || '')
-        : `Invoice ${invoice.invoice_number} from ${settings?.business_name || 'Our Company'}`;
-
-      // Generate email content
-      const emailContent = parseEmailTemplate(settings?.email_template || '', {
-        clientName: invoice.client?.name || '',
-        invoiceNumber: invoice.invoice_number,
-        amount: `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
-        dueDate: invoice.due_date || formatDate(invoice.date),
-        businessName: settings?.business_name || ''
-      });
-
-      // Generate PDF
-      const pdfBlob = await generatePDF(invoice, settings!);
-      const pdfBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(pdfBlob);
-      });
-
-      // Send email with error handling
-      try {
-        await sendEmail(
-          invoice.client?.email || '',
-          subject,
-          emailContent,
-          pdfBase64.split(',')[1]
-        );
-        toast.success('Invoice sent successfully');
-      } catch (emailError) {
-        console.error('Email sending error:', emailError);
-        toast.error('Failed to send invoice email. Please try again.');
-      }
-
+      toast.success('Invoice sent successfully');
     } catch (error) {
-      console.error('Error in handleSendEmail:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
+      console.error('Failed to send invoice:', error);
+      toast.error('Failed to send invoice');
     } finally {
-      setLoadingStates(prev => ({
-        ...prev,
-        [`send_${invoice.id}`]: { download: false, email: false, delete: false }
-      }));
+      setEmailingId(null);
     }
   };
 
@@ -485,216 +456,267 @@ export default function InvoicesTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {getFilteredAndSortedInvoices().map((invoice) => (
-              <tr key={invoice.id} className="hover:bg-gray-50">
-                {isSelectionMode && (
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedInvoices.includes(invoice.id)}
-                      onChange={() => {
-                        setSelectedInvoices(prev => 
-                          prev.includes(invoice.id)
-                            ? prev.filter(id => id !== invoice.id)
-                            : [...prev, invoice.id]
-                        );
-                      }}
-                      className="rounded border-gray-300 text-blue-600 cursor-pointer"
-                    />
-                  </td>
-                )}
-                <td className="px-6 py-4">{invoice.invoice_number}</td>
-                <td className="px-6 py-4">{invoice.client?.name}</td>
-                <td className="px-6 py-4">${invoice.total}</td>
-                <td className="px-6 py-4 hidden md:block">
-                  {editingDate === invoice.id ? (
-                    <input
-                      type="date"
-                      defaultValue={invoice.date}
-                      className="w-full p-1 border rounded-md cursor-pointer"
-                      onChange={(e) => {
-                        handleDateUpdate(invoice.id, e.target.value);
-                        setEditingDate(null);
-                      }}
-                      onBlur={() => setEditingDate(null)}
-                      autoFocus
-                    />
-                  ) : (
-                    <div 
-                      onClick={() => handleDateClick(invoice.id, invoice.date)}
-                      className=" hover:text-blue-600 cursor-pointer"
-                    >
-                      {formatDate(invoice.date)}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 relative">
-                  {editingStatus === invoice.id ? (
-                    <select
-                      value={invoice.status}
-                      onChange={(e) => {
-                        handleStatusUpdate(invoice.id, e.target.value);
-                        setEditingStatus(null);
-                      }}
-                      onBlur={() => setEditingStatus(null)}
-                      className="w-full p-3.5 border rounded-md cursor-pointer"
-                      autoFocus
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                      <option value="overdue">Overdue</option>
-                    </select>
-                  ) : (
-                    <div 
-                      onClick={() => handleStatusClick(invoice.id)}
-                      className="cursor-pointer "
-                    >
-                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {/* Desktop Actions */}
-                  <div className="hidden lg:flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
-                        setIsViewModalOpen(true);
-                      }}
-                      className="p-2 text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
-                    >
-                      <FiEye className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="p-2 text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
-                    >
-                      <FiEdit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDownloadPDF(invoice)}
-                      disabled={loadingStates[invoice.id]?.download}
-                      className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative cursor-pointer"
-                    >
-                      {loadingStates[invoice.id]?.download ? (
-                        <div className="animate-spin">
-                          <FiLoader className="w-5 h-5" />
-                        </div>
-                      ) : (
-                        <FiDownload className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleSendEmail(invoice)}
-                      disabled={loadingStates[invoice.id]?.email}
-                      className="p-2 text-green-500 hover:text-green-700 transition-colors relative cursor-pointer"
-                    >
-                      {loadingStates[invoice.id]?.email ? (
-                        <div className="animate-spin">
-                          <FiLoader className="w-5 h-5" />
-                        </div>
-                      ) : (
-                        <FiMail className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(invoice)}
-                      disabled={loadingStates[invoice.id]?.delete}
-                      className="p-2 text-red-500 hover:text-red-700 transition-colors relative cursor-pointer"
-                    >
-                      {loadingStates[invoice.id]?.delete ? (
-                        <div className="animate-spin text-red-500">
-                          <FiLoader className="w-5 h-5" />
-                        </div>
-                      ) : (
-                        <FiTrash2 className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Mobile Actions Menu */}
-                  <div className="lg:hidden relative">
-                    <button
-                      onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
-                      className="p-2 text-gray-600 hover:text-gray-800 cursor-pointer"
-                    >
-                      <FiMoreVertical className="w-5 h-5" />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    {openActionMenu === invoice.id && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-10"
-                          onClick={() => setOpenActionMenu(null)}
-                        />
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
-                          <button
-                            onClick={() => {
-                              setSelectedInvoice(invoice);
-                              setIsViewModalOpen(true);
-                              setOpenActionMenu(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <FiEye className="w-4 h-4" /> View
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedInvoice(invoice);
-                              setIsEditModalOpen(true);
-                              setOpenActionMenu(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <FiEdit2 className="w-4 h-4" /> Edit
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDownloadPDF(invoice);
-                              setOpenActionMenu(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <FiDownload className="w-4 h-4" /> Download
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleSendEmail(invoice);
-                              setOpenActionMenu(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <FiMail className="w-4 h-4" /> Send Email
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDelete(invoice);
-                              setOpenActionMenu(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <FiTrash2 className="w-4 h-4" /> Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+            {invoices.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center py-8 text-gray-500">
+                  No invoices found. Create your first invoice to get started.
                 </td>
               </tr>
-            ))}
+            ) : (
+              getFilteredAndSortedInvoices().map((invoice) => (
+                <tr key={invoice.id} className="hover:bg-gray-50">
+                  {isSelectionMode && (
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedInvoices.includes(invoice.id)}
+                        onChange={() => {
+                          setSelectedInvoices(prev => 
+                            prev.includes(invoice.id)
+                              ? prev.filter(id => id !== invoice.id)
+                              : [...prev, invoice.id]
+                          );
+                        }}
+                        className="rounded border-gray-300 text-blue-600 cursor-pointer"
+                      />
+                    </td>
+                  )}
+                  <td className="px-6 py-4">{invoice.invoice_number}</td>
+                  <td className="px-6 py-4">{invoice.client?.name}</td>
+                  <td className="px-6 py-4">${invoice.total}</td>
+                  <td className="px-6 py-4 hidden md:block">
+                    {editingDate === invoice.id ? (
+                      <input
+                        type="date"
+                        defaultValue={invoice.date}
+                        className="w-full p-1 border rounded-md cursor-pointer"
+                        onChange={(e) => {
+                          handleDateUpdate(invoice.id, e.target.value);
+                          setEditingDate(null);
+                        }}
+                        onBlur={() => setEditingDate(null)}
+                        autoFocus
+                      />
+                    ) : (
+                      <div 
+                        onClick={() => handleDateClick(invoice.id, invoice.date)}
+                        className=" hover:text-blue-600 cursor-pointer"
+                      >
+                        {formatDate(invoice.date)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 relative">
+                    {editingStatus === invoice.id ? (
+                      <select
+                        value={invoice.status}
+                        onChange={(e) => {
+                          handleStatusUpdate(invoice.id, e.target.value);
+                          setEditingStatus(null);
+                        }}
+                        onBlur={() => setEditingStatus(null)}
+                        className="w-full p-3.5 border rounded-md cursor-pointer"
+                        autoFocus
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                      </select>
+                    ) : (
+                      <div 
+                        onClick={() => handleStatusClick(invoice.id)}
+                        className="cursor-pointer "
+                      >
+                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {/* Desktop Actions */}
+                    <div className="hidden lg:flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setIsViewModalOpen(true);
+                        }}
+                        className="p-2 text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
+                      >
+                        <FiEye className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-2 text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <FiEdit2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPDF(invoice)}
+                        disabled={loadingStates[invoice.id]?.download}
+                        className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative cursor-pointer"
+                      >
+                        {loadingStates[invoice.id]?.download ? (
+                          <div className="animate-spin">
+                            <FiLoader className="w-5 h-5" />
+                          </div>
+                        ) : (
+                          <FiDownload className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleSendEmail(invoice)}
+                        disabled={emailingId === invoice.id}
+                        className={`p-2 text-green-500 hover:text-green-700 transition-colors relative cursor-pointer ${
+                          emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {emailingId === invoice.id ? (
+                          <div className="flex items-center">
+                            <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24">
+                              <circle 
+                                className="opacity-25" 
+                                cx="12" 
+                                cy="12" 
+                                r="10" 
+                                stroke="currentColor" 
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path 
+                                className="opacity-75" 
+                                fill="currentColor" 
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            Sending...
+                          </div>
+                        ) : (
+                          <FiMail className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(invoice)}
+                        disabled={loadingStates[invoice.id]?.delete}
+                        className="p-2 text-red-500 hover:text-red-700 transition-colors relative cursor-pointer"
+                      >
+                        {loadingStates[invoice.id]?.delete ? (
+                          <div className="animate-spin text-red-500">
+                            <FiLoader className="w-5 h-5" />
+                          </div>
+                        ) : (
+                          <FiTrash2 className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Mobile Actions Menu */}
+                    <div className="lg:hidden relative">
+                      <button
+                        onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
+                        className="p-2 text-gray-600 hover:text-gray-800 cursor-pointer"
+                      >
+                        <FiMoreVertical className="w-5 h-5" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openActionMenu === invoice.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10"
+                            onClick={() => setOpenActionMenu(null)}
+                          />
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setIsViewModalOpen(true);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiEye className="w-4 h-4" /> View
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setIsEditModalOpen(true);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiEdit2 className="w-4 h-4" /> Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDownloadPDF(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiDownload className="w-4 h-4" /> Download
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleSendEmail(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              disabled={emailingId === invoice.id}
+                              className={`w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer ${
+                                emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {emailingId === invoice.id ? (
+                                <div className="flex items-center">
+                                  <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24">
+                                    <circle 
+                                      className="opacity-25" 
+                                      cx="12" 
+                                      cy="12" 
+                                      r="10" 
+                                      stroke="currentColor" 
+                                      strokeWidth="4"
+                                      fill="none"
+                                    />
+                                    <path 
+                                      className="opacity-75" 
+                                      fill="currentColor" 
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                  </svg>
+                                  Sending...
+                                </div>
+                              ) : (
+                                <FiMail className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiTrash2 className="w-4 h-4" /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Card view for mobile */}
       <div className="sm:hidden p-4 space-y-4">
-        {getFilteredAndSortedInvoices().map((invoice) => (
+        {invoices.map((invoice) => (
           <div 
             key={invoice.id} 
             className="bg-white rounded-lg shadow-md border border-gray-100 cursor-pointer"
@@ -819,11 +841,31 @@ export default function InvoicesTable({
                             handleSendEmail(invoice);
                             setOpenActionMenu(null);
                           }}
-                          disabled={loadingStates[invoice.id]?.email}
-                          className="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                          disabled={emailingId === invoice.id}
+                          className={`w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer ${
+                            emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
-                          {loadingStates[invoice.id]?.email ? (
-                            <FiLoader className="w-4 h-4 animate-spin" />
+                          {emailingId === invoice.id ? (
+                            <div className="flex items-center">
+                              <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24">
+                                <circle 
+                                  className="opacity-25" 
+                                  cx="12" 
+                                  cy="12" 
+                                  r="10" 
+                                  stroke="currentColor" 
+                                  strokeWidth="4"
+                                  fill="none"
+                                />
+                                <path 
+                                  className="opacity-75" 
+                                  fill="currentColor" 
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
+                              Sending...
+                            </div>
                           ) : (
                             <FiMail className="w-4 h-4" />
                           )}{' '}

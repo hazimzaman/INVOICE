@@ -75,7 +75,7 @@ export const fetchSettings = createAsyncThunk(
 // Update settings with better error handling
 export const updateSettings = createAsyncThunk(
   'settings/update',
-  async ({ settings }: { settings: Partial<Settings> }, { rejectWithValue }) => {
+  async (settings: Partial<Settings>, { rejectWithValue }) => {
     try {
       const session = await checkAuth();
       
@@ -85,7 +85,7 @@ export const updateSettings = createAsyncThunk(
 
       const { data, error } = await supabase
         .from('settings')
-        .update({ ...settings, updated_at: new Date().toISOString() })
+        .update(settings)
         .eq('user_id', session.user.id)
         .select()
         .single();
@@ -98,9 +98,7 @@ export const updateSettings = createAsyncThunk(
       return data;
     } catch (error: any) {
       console.error('Settings update error:', error);
-      return rejectWithValue(
-        error?.message || 'An error occurred while updating settings'
-      );
+      return rejectWithValue(error?.message || 'An error occurred while updating settings');
     }
   }
 );

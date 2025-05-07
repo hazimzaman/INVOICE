@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Text, View, StyleSheet, Image, Font, Page } from '@react-pdf/renderer';
 import { Invoice } from '@/types/invoice';
 import { Settings } from '@/types/settings';
 import { formatDate } from '@/utils/dateFormat';
@@ -32,9 +32,7 @@ const styles = StyleSheet.create({
   },
   invoiceContainer: {
     position: 'relative',
-    display: 'flex',
     flexDirection: 'column',
-    minHeight: '100%',
     gap: 25,
   },
   blobWrapper: {
@@ -47,7 +45,6 @@ const styles = StyleSheet.create({
     top: 67,
   },
   header: {
-    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 50,
@@ -98,7 +95,6 @@ const styles = StyleSheet.create({
   },
   leftDetails: {
     flex: 1,
-    display: 'flex',
     flexDirection: 'column',
     rowGap: 2,
     transform: 'translateY(-50px)',
@@ -135,11 +131,9 @@ const styles = StyleSheet.create({
   },
   table: {
     width: '100%',
-    marginTop: 0,
-    marginBottom: 0,
     borderWidth: 1,
-    transform: 'translateY(-50px)',
     borderColor: '#eee',
+    transform: 'translateY(-50px)',
   },
   tableRow: {
     flexDirection: 'row',
@@ -168,7 +162,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   totalSection: {
-    marginTop: 0,
     textAlign: 'right',
     paddingRight: 8,
     transform: 'translateY(-50px)',
@@ -183,10 +176,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   footer: {
-    marginTop: 'auto',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     fontSize: 9,
     color: '#666',
     textAlign: 'center',
+    paddingBottom: 20,
   },
   backgroundImage: {
     position: 'absolute',
@@ -216,35 +213,32 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  logo: {
+    width: 'auto',
+    height: 50,
+    marginBottom: 20,
+    objectFit: 'contain'
+  },
 });
 
 export const InvoicePDF: React.FC<{ invoice: Invoice; businessInfo: Settings }> = ({ invoice, businessInfo }) => {
-  // Get the logo URL if it exists
-  let logoUrl = '';
-  if (businessInfo?.business_logo) {
-    const { data: { publicUrl } } = supabase
-      .storage
-      .from('business-logos')
-      .getPublicUrl(businessInfo.business_logo);
-    logoUrl = publicUrl || '';
-  }
+  const logoUrl = businessInfo?.business_logo || '';
 
   return (
     <View style={styles.page}>
       <View style={styles.invoiceContainer}>
         <View style={styles.blobWrapper}>
-          <Image 
-            src="/Frame.png"
-          />
+          <Image src="/Frame.png" />
         </View>
         
         <View style={styles.header}>
           <Text style={styles.invoiceTitle}>INVOICE</Text>
           <View style={styles.companyInfo}>
             {logoUrl && (
-              <Image 
-                style={styles.companyLogo} 
-                src={logoUrl} 
+              <Image
+                src={logoUrl}
+                style={styles.companyLogo}
+                cache={false}
               />
             )}
             <Text style={styles.companyName}>{businessInfo.business_name}</Text>

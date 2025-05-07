@@ -1,18 +1,15 @@
 'use client';
 
-export default function VerifyPending() {
+export default function VerifyPendingPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Check Your Email
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            We've sent you a verification link. Please check your email and click the link to verify your account.
-          </p>
-        </div>
-      </div>
+    <div className="max-w-md mx-auto mt-16 p-6 bg-white rounded-lg shadow-md">
+      <h1 className="text-2xl font-bold text-center mb-4">Check Your Email</h1>
+      <p className="text-gray-600 text-center">
+        We've sent you a verification link. Please check your email and click the link to complete your registration.
+      </p>
+      <p className="text-gray-500 text-sm text-center mt-4">
+        Don't see the email? Check your spam folder.
+      </p>
     </div>
   );
 } 

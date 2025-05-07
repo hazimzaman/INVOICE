@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { Dialog } from '@headlessui/react';
-import { FiX, FiPlus } from 'react-icons/fi';
+import { FiX, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { Client } from '@/types/client';
 import { InvoiceItem } from '@/types/invoice';
 import { addInvoice } from '@/store/slices/invoicesSlice';
@@ -28,29 +28,38 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   const generateInvoiceNumber = () => {
     if (!settings) return '';
     
-    const prefix = settings.invoice_prefix || 'INV';
-    const currentNumber = settings.current_invoice_number || 1;
+    const prefix = settings.invoice_prefix || 'INV-';
+    const currentNumber = settings.current_invoice_num;
     const paddedNumber = String(currentNumber).padStart(3, '0');
     return `${prefix}${paddedNumber}`;
   };
 
-  const [formData, setFormData] = useState({
+  // Define initial states
+  const initialFormState = {
     client_id: '',
     date: new Date().toISOString().split('T')[0],
     notes: '',
-    items: [] as InvoiceItem[]
-  });
+    items: [] as InvoiceItem[],
+    subtotal: 0,
+    total: 0
+  };
 
-  const [newItem, setNewItem] = useState({
+  const initialItemState = {
     name: '',
     description: '',
     amount: 0
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormState);
+  const [newItem, setNewItem] = useState(initialItemState);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  // Add state for unsaved total
-  const [runningTotal, setRunningTotal] = useState(0);
+  // Add reset function
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setNewItem(initialItemState);
+    setSelectedClient(null);
+  };
 
   const handleClientChange = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
@@ -65,15 +74,22 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   };
 
   const addItem = () => {
-    if (!newItem.name || newItem.amount <= 0) return;
+    if (!isItemValid()) {
+      toast.error('Please fill in all item details');
+      return;
+    }
     
-    setFormData(prev => ({
-      ...prev,
-      items: [...prev.items, newItem]
-    }));
-    
-    // Update running total
-    setRunningTotal(prev => prev + newItem.amount);
+    setFormData(prev => {
+      const updatedItems = [...prev.items, newItem];
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      return {
+        ...prev,
+        items: updatedItems,
+        subtotal: newSubtotal,
+        total: newSubtotal
+      };
+    });
     
     setNewItem({
       name: '',
@@ -83,29 +99,26 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   };
 
   const removeItem = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => {
+      const updatedItems = prev.items.filter((_, i) => i !== index);
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      return {
+        ...prev,
+        items: updatedItems,
+        subtotal: newSubtotal,
+        total: newSubtotal
+      };
+    });
   };
 
-  const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => sum + item.amount, 0);
-  };
+  // Show Add Item button when we have exactly one item
+  const showAddItemButton = formData.items.length === 1 || (formData.items.length > 0 && isItemValid());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      if (settingsLoading) {
-        toast.error('Please wait while settings are loading');
-        return;
-      }
-
-      if (!settings) {
-        await dispatch(fetchSettings()).unwrap();
-      }
-
       if (!settings) {
         toast.error('Settings not found. Please configure your settings first.');
         return;
@@ -116,40 +129,60 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
         return;
       }
 
-      // Add current item if valid
-      const allItems = [...formData.items];
+      // If we have a valid new item, add it to the items array
+      let finalFormData = formData;
       if (isItemValid()) {
-        allItems.push(newItem);
+        const updatedItems = [...formData.items, newItem];
+        const newSubtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+        finalFormData = {
+          ...formData,
+          items: updatedItems,
+          subtotal: newSubtotal,
+          total: newSubtotal
+        };
       }
 
-      if (allItems.length === 0) {
+      // Check if we have at least one item
+      if (finalFormData.items.length === 0) {
         toast.error('Please add at least one item');
         return;
       }
 
       const invoiceData = {
-        ...formData,
-        items: allItems,
+        ...finalFormData,
         invoice_number: generateInvoiceNumber(),
         status: 'pending' as const,
-        subtotal: calculateTotal() + (isItemValid() ? newItem.amount : 0),
-        total: calculateTotal() + (isItemValid() ? newItem.amount : 0)
+        subtotal: finalFormData.subtotal,
+        total: finalFormData.total
       };
 
       await dispatch(addInvoice(invoiceData)).unwrap();
       
       // Increment the invoice number in settings
       await dispatch(updateSettings({
-        settings: {
-          current_invoice_number: (settings.current_invoice_number || 1) + 1
-        }
+        id: settings.id,
+        user_id: settings.user_id,
+        current_invoice_num: settings.current_invoice_num + 1
       })).unwrap();
 
-      onClose();
+      toast.success('Invoice created successfully');
+
+      // Reset form and close modal after a delay
+      setTimeout(() => {
+        resetForm();
+        onClose();
+      }, 2000);
+
     } catch (error) {
       console.error('Failed to create invoice:', error);
       toast.error('Failed to create invoice');
     }
+  };
+
+  // Add cleanup on modal close
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   if (settingsLoading) {
@@ -208,6 +241,7 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
               <div className="max-h-[300px] overflow-y-auto">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium">Items</h3>
+                  {/* Add Item button - always show */}
                   <button
                     type="button"
                     onClick={addItem}
@@ -218,28 +252,37 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
                         : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     }`}
                   >
+                    <FiPlus className="w-4 h-4 inline-block mr-1" />
                     Add Item
                   </button>
                 </div>
                 
                 {/* Existing Items */}
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-gray-50 rounded">
-                    <div className="flex-1">{item.name}</div>
-                    <div className="flex-1">{item.description}</div>
-                    <div className="w-24 text-right">${item.amount.toFixed(2)}</div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <FiX />
-                    </button>
-                  </div>
-                ))}
+                <div className="space-y-4 mt-4">
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-600">{item.description}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <p className="font-medium">
+                          {selectedClient?.currency || '$'}{item.amount.toFixed(2)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {/* New Item Form */}
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-4 mt-4">
                   <input
                     type="text"
                     placeholder="Item name"
@@ -262,23 +305,18 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
                       const amount = parseFloat(e.target.value) || 0;
                       setNewItem(prev => ({ ...prev, amount }));
                     }}
-                    className="p-2 border border-[var(--color-gray-300)] rounded w-full"
+                    className={`p-2 border rounded w-full ${
+                      isItemValid() ? 'border-green-500 font-bold' : 'border-[var(--color-gray-300)]'
+                    }`}
                   />
                 </div>
 
-                {/* Show running total */}
-                {newItem.amount > 0 && (
-                  <div className="text-right text-gray-400 text-sm mt-1">
-                    amount: {selectedClient?.currency || '$'}{(calculateTotal() + newItem.amount).toFixed(2)}
-                  </div>
-                )}
-               
-              </div>
-
-              {/* Total */}
-              <div className="text-right">
-                <div className="text-lg font-bold">
-                  Total: {selectedClient?.currency || '$'}{calculateTotal().toFixed(2)}
+                {/* Total Section */}
+                <div className="mt-6 text-right">
+                  <p className="text-lg font-semibold">
+                    Total: {selectedClient?.currency || '$'}
+                    {(formData.total + (isItemValid() ? newItem.amount : 0)).toFixed(2)}
+                  </p>
                 </div>
               </div>
 

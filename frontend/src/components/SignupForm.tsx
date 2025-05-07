@@ -24,6 +24,22 @@ function generateUUID() {
   });
 }
 
+// Add this function to hash passwords
+const hashPassword = async (password: string): Promise<string> => {
+  // Convert password string to bytes
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  
+  // Hash the password using SHA-256
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  
+  // Convert hash to hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
+};
+
 export default function SignupForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -39,50 +55,21 @@ export default function SignupForm() {
     setError('');
 
     try {
-      const verificationToken = generateToken();
-      console.log('Generated token:', verificationToken);
-      const passwordUUID = generateUUID(); // Generate UUID for password
-
-      // First, check if email exists
-      const { data: existingUser } = await supabase
-        .from('unverified_users')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (existingUser) {
-        throw new Error('Email already registered');
+      // Validate inputs
+      if (!email || !password || !name) {
+        throw new Error('All fields are required');
       }
 
-      // Save to unverified_users with password_uuid
-      const { data: insertedUser, error: userError } = await supabase
-        .from('unverified_users')
-        .insert({
-          email,
-          name,
-          password_uuid: passwordUUID,
-          verification_token: verificationToken,
-          verified: false
-        })
-        .select()
-        .single();
-
-      console.log('Inserted user:', {
-        success: !userError,
-        userData: insertedUser,
-        error: userError
-      });
-
-      // Store the actual password temporarily in localStorage for verification
-      localStorage.setItem(`temp_password_${verificationToken}`, password);
-      console.log('Stored password for token:', verificationToken);
-
-      if (userError) {
-        console.error('User creation error:', userError);
-        throw new Error(userError.message);
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
       }
 
-      // Send verification email
+      // Generate verification token
+      const verificationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      // Send verification request first (backend will handle user creation)
       const response = await fetch('http://localhost:5001/api/send-verification', {
         method: 'POST',
         headers: {
@@ -91,31 +78,22 @@ export default function SignupForm() {
         body: JSON.stringify({
           email,
           name,
-          verificationToken
+          verificationToken,
+          password
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        // Cleanup if email sending fails
-        await supabase
-          .from('unverified_users')
-          .delete()
-          .eq('email', email);
-        
-        const errorData = await response.json();
-        throw new Error(errorData.details || 'Failed to send verification email');
+        throw new Error(responseData.error || 'Failed to send verification email');
       }
 
-      // Clear form and show success
-      setEmail('');
-      setName('');
-      setPassword('');
-      alert('Please check your email to verify your account');
+      // Redirect to verification pending page
       router.push('/verify-pending');
-
     } catch (error) {
       console.error('Signup error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to sign up');
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -123,17 +101,15 @@ export default function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
-      
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="p-3 mb-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
       )}
-
+      
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-          Name
+          Nameeeeeeeeee
         </label>
         <input
           type="text"
@@ -163,30 +139,31 @@ export default function SignupForm() {
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
           Password
         </label>
-        <input
-          type={showPassword ? "text" : "password"}
-          id="password"
-          name="password"
-          required
-          className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
-          style={{ top: '24px' }} // Adjust for label
-        >
-          {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
-        </button>
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            id="password"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 pr-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <button
         type="submit"
-        className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors mt-4"
         disabled={loading}
+        className={`w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 
+          ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {loading ? 'Signing up...' : 'Sign Up'}
       </button>

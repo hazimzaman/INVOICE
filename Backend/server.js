@@ -3,6 +3,8 @@ const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const { createTransporter } = require('./src/config/email');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 console.log('Environment check:', {
@@ -23,9 +25,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Initialize Supabase with service role key for admin operations
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+// Initialize Supabase with service role key
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
@@ -35,16 +36,23 @@ const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY
   }
 });
 
-// Email transporter setup
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+// Log the initialization
+console.log('Supabase client initialized with:', {
+  url: process.env.SUPABASE_URL,
+  hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length
 });
+
+// Initialize email transporter
+let emailTransporter;
+(async () => {
+  try {
+    emailTransporter = await createTransporter();
+    console.log('Email transporter initialized');
+  } catch (error) {
+    console.error('Failed to initialize email transporter:', error);
+  }
+})();
 
 // Generate verification token
 function generateToken() {
@@ -87,53 +95,72 @@ app.post('/api/users', async (req, res) => {
 
 app.post('/api/send-verification', async (req, res) => {
   try {
-    const { email, name, verificationToken } = req.body;
+    const { email, name, password } = req.body;
     
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    
-    console.log('Verification details:', {
-      email,
-      name,
-      verificationToken,
-      verificationLink
-    });
-    
-    // Test SMTP connection first
-    await transporter.verify();
-    console.log('SMTP connection verified');
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // Send the verification email
-    const info = await transporter.sendMail({
+    // Store raw password temporarily
+    const { data: tempPassword, error: tempPasswordError } = await supabase
+      .from('temp_passwords')
+      .insert({ password: password })
+      .select()
+      .single();
+
+    if (tempPasswordError) {
+      throw new Error('Failed to store temporary password');
+    }
+
+    // Create unverified user
+    const { error: userError } = await supabase
+      .from('unverified_users')
+      .insert({
+        email,
+        name,
+        verification_token: verificationToken,
+        password_id: tempPassword.id
+      });
+
+    if (userError) {
+      throw userError;
+    }
+
+    // Send verification email
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
+    const info = await emailTransporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
-      subject: 'Verify Your Email - InvoiceApp',
+      subject: 'Verify your email',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563EB;">Welcome to InvoiceApp!</h1>
+          <h1>Welcome to Our App!</h1>
           <p>Hi ${name},</p>
-          <p>Please verify your email by clicking the button below:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" 
-               style="background-color: #2563EB; color: white; padding: 12px 24px; 
-                      text-decoration: none; border-radius: 6px;">
+          <p>Thank you for signing up. Please verify your email by clicking the link below:</p>
+          <p>
+            <a href="${verificationUrl}" 
+               style="display: inline-block; padding: 10px 20px; 
+                      background-color: #4F46E5; color: white; 
+                      text-decoration: none; border-radius: 5px;">
               Verify Email
             </a>
-          </div>
-          <p style="color: #666; font-size: 14px;">
-            If you didn't create an account, please ignore this email.
           </p>
+          <p>If the button doesn't work, copy and paste this link into your browser:</p>
+          <p>${verificationUrl}</p>
+          <p>This link will expire in 24 hours.</p>
         </div>
       `
     });
 
-    console.log('Verification email sent:', info.messageId);
-    res.json({ success: true, messageId: info.messageId });
-
+    res.json({ 
+      success: true,
+      message: 'Verification email sent',
+      messageId: info.messageId
+    });
   } catch (error) {
-    console.error('Failed to send verification email:', error);
+    console.error('Signup error:', error);
     res.status(500).json({ 
-      error: 'Failed to send verification email',
-      details: error.message 
+      error: 'Failed to process signup',
+      details: error.message
     });
   }
 });
@@ -141,7 +168,7 @@ app.post('/api/send-verification', async (req, res) => {
 // Test email route
 app.post('/api/test-email', async (req, res) => {
   try {
-    await transporter.sendMail({
+    await emailTransporter.sendMail({
       from: 'hazimzaman@primocreators.com',
       to: 'shahsuleman0077@gmail.com',
       subject: 'Test Email from InvoiceApp',
@@ -164,19 +191,8 @@ app.post('/api/test-email', async (req, res) => {
 app.post('/api/test-smtp', async (req, res) => {
   try {
     const { email } = req.body;
-    
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      },
-      debug: true
-    });
 
-    const info = await transporter.sendMail({
+    const info = await emailTransporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
       subject: 'Test Email',
@@ -212,7 +228,7 @@ app.post('/api/request-password-reset', async (req, res) => {
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    
+
     // Store reset token in database
     const { error: tokenError } = await supabase
       .from('password_reset_tokens')
@@ -230,7 +246,7 @@ app.post('/api/request-password-reset', async (req, res) => {
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     // Send email using existing transporter
-    const info = await transporter.sendMail({
+    const info = await emailTransporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
       subject: 'Reset Your Password - Invoice App',
@@ -243,8 +259,8 @@ app.post('/api/request-password-reset', async (req, res) => {
           <div style="margin-bottom: 30px;">
             <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
               Hello ${userData.name},<br><br>
-              We received a request to reset your password. Click the button below to set a new password:
-            </p>
+            We received a request to reset your password. Click the button below to set a new password:
+          </p>
           </div>
 
           <div style="text-align: center; margin-bottom: 30px;">
@@ -257,11 +273,11 @@ app.post('/api/request-password-reset', async (req, res) => {
 
           <div style="margin-bottom: 30px;">
             <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
-              If you didn't request this password reset, you can safely ignore this email.
+            If you didn't request this password reset, you can safely ignore this email.
             </p>
             <p style="font-size: 14px; line-height: 1.6; color: #64748b;">
               For security, this link will expire in 24 hours.
-            </p>
+          </p>
           </div>
         </div>
       `
@@ -355,96 +371,124 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
-// Add this endpoint to handle email verification
-app.post('/api/verify-email', async (req, res) => {
+// Add this function to create a verified user
+async function createVerifiedUser(email, name, passwordId) {
   try {
-    const { token, password } = req.body;
-    console.log('Starting verification process for token:', token);
-
-    // Check if token exists
-    if (!token) {
-      throw new Error('No verification token provided');
-    }
-
-    // Check if password exists
-    if (!password) {
-      throw new Error('No password provided');
-    }
-
-    // Get user from unverified_users with detailed logging
-    const { data: userData, error: fetchError } = await supabase
-      .from('unverified_users')
-      .select('*')
-      .eq('verification_token', token)
+    // Get the raw password
+    const { data: passwordData, error: passwordError } = await supabase
+      .from('temp_passwords')
+      .select('password')
+      .eq('id', passwordId)
       .single();
 
-    console.log('Database query result:', {
-      hasData: !!userData,
-      error: fetchError,
-      tokenUsed: token,
-      userEmail: userData?.email
-    });
-
-    if (fetchError) {
-      console.error('Database error:', fetchError);
-      throw new Error(`Database error: ${fetchError.message}`);
+    if (passwordError) {
+      console.error('Password fetch error:', passwordError);
+      throw new Error('Failed to retrieve password data');
     }
 
-    if (!userData) {
-      throw new Error('No user found with this verification token');
-    }
+    console.log('Creating auth user for:', email);
 
-    if (userData.verified) {
-      throw new Error('Email already verified');
-    }
-
-    // Create verified user in Supabase auth
-    const { data: authData, error: signupError } = await supabase.auth.signUp({
-      email: userData.email,
-      password: password, // Use the actual password for auth
-      options: {
-        data: {
-          name: userData.name,
-          password_uuid: userData.password_uuid // Store UUID reference
-        }
+    // Create the user in Supabase Auth with raw password
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email,
+      password: passwordData.password, // Using raw password
+      email_confirm: true,
+      user_metadata: {
+        name: name
       }
     });
 
-    if (signupError) {
-      console.error('Auth signup error:', signupError);
-      throw new Error('Failed to create account');
+    if (authError) {
+      console.error('Auth user creation error:', authError);
+      throw authError;
     }
 
-    // Update unverified_users record
+    console.log('Auth user created:', authData.user.id);
+
+    // Create the user in your users table
+    const { error: userError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: email,
+        name: name
+      });
+
+    if (userError) {
+      console.error('Database user creation error:', userError);
+      // Clean up auth user if db insert fails
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw userError;
+    }
+
+    // Clean up temporary password
+    await supabase
+      .from('temp_passwords')
+      .delete()
+      .eq('id', passwordId);
+
+    return {
+      id: authData.user.id,
+      email: email,
+      password: passwordData.password // Return raw password for initial sign-in
+    };
+  } catch (error) {
+    console.error('Error creating verified user:', error);
+    throw error;
+  }
+}
+
+// Update the verify-email endpoint
+app.post('/api/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+    console.log('Processing verification for token:', token);
+    
+    // Get unverified user data
+    const { data: userData, error: userError } = await supabase
+      .from('unverified_users')
+      .select('*')
+      .eq('verification_token', token)
+      .eq('verified', false)
+      .single();
+
+    if (userError || !userData) {
+      console.error('User fetch error:', userError);
+      throw new Error('Invalid or expired verification token');
+    }
+
+    // Create verified user
+    const user = await createVerifiedUser(
+      userData.email,
+      userData.name,
+      userData.password_id
+    );
+
+    // Mark as verified
     const { error: updateError } = await supabase
       .from('unverified_users')
-      .update({ 
-        verified: true,
-        user_id: authData.user.id
-      })
+      .update({ verified: true })
       .eq('verification_token', token);
 
     if (updateError) {
       console.error('Update error:', updateError);
-      throw new Error('Failed to verify email');
+      throw new Error('Failed to update verification status');
     }
 
     res.json({ 
       success: true,
-      message: 'Email verified successfully'
+      message: 'Email verified successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        password: user.password // Send back raw password for initial sign-in
+      }
     });
-
   } catch (error) {
-    console.error('Detailed verification error:', {
-      message: error.message,
-      stack: error.stack,
-      originalError: error
-    });
-    
+    console.error('Verification error:', error);
     res.status(500).json({ 
-      error: 'Verification failed',
-      details: error.message,
-      type: error.constructor.name
+      error: 'Failed to verify email',
+      details: error.message 
     });
   }
 });
@@ -489,7 +533,7 @@ app.post('/api/send-email', async (req, res) => {
     }
 
     // Send the email
-    const info = await transporter.sendMail({
+    const info = await emailTransporter.sendMail({
       from: process.env.SMTP_USER,
       to: to,
       subject: subject,
@@ -519,6 +563,105 @@ app.post('/api/send-email', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to send email',
       details: error.message 
+    });
+  }
+});
+
+// Test email configuration
+app.get('/api/test-email-config', async (req, res) => {
+  try {
+    await emailTransporter.verify();
+    
+    // Send test email
+    const info = await emailTransporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: process.env.SMTP_USER, // Send to yourself
+      subject: 'Test Email',
+      text: 'If you receive this, the email configuration is working.'
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Email configuration is working',
+      messageId: info.messageId
+    });
+  } catch (error) {
+    console.error('Email configuration test failed:', error);
+    res.status(500).json({ 
+      error: 'Email configuration test failed',
+      details: error.message
+    });
+  }
+});
+
+// Add this near your other test endpoints
+app.post('/api/test-email-simple', async (req, res) => {
+  try {
+    if (!emailTransporter) {
+      throw new Error('Email transporter not initialized');
+    }
+
+    const testMailOptions = {
+      from: process.env.SMTP_USER,
+      to: 'shahsuleman0077@gmail.com', // Your test email
+      subject: 'Test Email',
+      text: 'This is a test email from the system'
+    };
+
+    console.log('Attempting to send test email with options:', {
+      from: testMailOptions.from,
+      to: testMailOptions.to
+    });
+
+    const info = await emailTransporter.sendMail(testMailOptions);
+    
+    console.log('Test email sent successfully:', info);
+    res.json({ 
+      success: true, 
+      messageId: info.messageId 
+    });
+  } catch (error) {
+    console.error('Detailed email error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send test email',
+      details: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Add this test endpoint
+app.get('/api/test-db-access', async (req, res) => {
+  try {
+    // Test user_passwords access
+    const { data: passwordTest, error: passwordError } = await supabase
+      .from('user_passwords')
+      .insert({
+        id: crypto.randomUUID(),
+        password_hash: 'test_hash'
+      })
+      .select()
+      .single();
+
+    if (passwordError) {
+      throw new Error(`Password table error: ${passwordError.message}`);
+    }
+
+    // Clean up test data
+    await supabase
+      .from('user_passwords')
+      .delete()
+      .eq('id', passwordTest.id);
+
+    res.json({ 
+      success: true, 
+      message: 'Database access verified'
+    });
+  } catch (error) {
+    console.error('Database access test failed:', error);
+    res.status(500).json({ 
+      error: 'Database access test failed',
+      details: error.message
     });
   }
 });

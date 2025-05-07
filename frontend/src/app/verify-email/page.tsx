@@ -8,53 +8,39 @@ export default function VerifyEmail() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  useEffect(() => {
-    const verifyEmail = async () => {
-      try {
-        const token = searchParams.get('token');
-        console.log('Received token:', token);
-        
-        if (!token) {
-          setStatus('Invalid verification link - No token found');
-          return;
-        }
-
-        // Get stored password
-        const password = localStorage.getItem(`temp_password_${token}`);
-        console.log('Retrieved password exists:', !!password);
-
-        if (!password) {
-          throw new Error('Password not found in local storage. Token: ' + token);
-        }
-
-        console.log('Making verification request with token:', token);
-
-        const response = await fetch('http://localhost:5001/api/verify-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ token, password }),
-        });
-
-        const data = await response.json();
-        console.log('Verification response:', data);
-
-        if (response.ok && data.success) {
-          localStorage.removeItem(`temp_password_${token}`);
-          setStatus('Email verified successfully! Redirecting to login...');
-          setTimeout(() => router.push('/login'), 2000);
-        } else {
-          throw new Error(data.details || `Verification failed: ${data.error}`);
-        }
-      } catch (error) {
-        console.error('Verification error:', error);
-        setStatus(error instanceof Error ? error.message : 'Verification failed. Please try again.');
+  const verifyEmail = async () => {
+    try {
+      const token = searchParams.get('token');
+      if (!token) {
+        setStatus('Invalid verification link');
+        return;
       }
-    };
 
+      const response = await fetch('http://localhost:5001/api/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setStatus('Email verified successfully! Redirecting to login...');
+        setTimeout(() => router.push('/login'), 2000);
+      } else {
+        throw new Error(data.details || 'Verification failed');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setStatus(error instanceof Error ? error.message : 'Verification failed');
+    }
+  };
+
+  useEffect(() => {
     verifyEmail();
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -63,13 +49,23 @@ export default function VerifyEmail() {
           <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
             Email Verification
           </h2>
-          <p className={`text-lg ${
+          <p className={`text-lg mb-6 ${
             status.includes('success') ? 'text-green-600' : 
-            status.includes('failed') ? 'text-red-600' : 
+            status.includes('failed') || status.includes('expired') ? 'text-red-600' : 
             'text-gray-600'
           }`}>
             {status}
           </p>
+          {(status.includes('failed') || status.includes('expired')) && (
+            <div className="space-y-4">
+              <button
+                onClick={() => router.push('/signup')}
+                className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+              >
+                Sign Up Again
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
