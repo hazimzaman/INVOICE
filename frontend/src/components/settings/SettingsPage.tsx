@@ -95,6 +95,20 @@ export default function SettingsPage() {
     }
   }, [settings]);
 
+  // Add bucket check effect
+  useEffect(() => {
+    const checkBucket = async () => {
+      try {
+        const { data, error } = await supabase.storage.getBucket('business-logos');
+        console.log('Bucket check result:', { data, error });
+      } catch (error) {
+        console.error('Error checking bucket:', error);
+      }
+    };
+    
+    checkBucket();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -118,44 +132,54 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Set the selected filename
+    console.log('Starting upload for file:', file.name);
     setSelectedFileName(file.name);
     
     try {
       setLoading(true);
+      const fileName = `${Date.now()}-${file.name}`;
+      
+      console.log('Uploading to business-logos bucket with filename:', fileName);
       
       // Upload to Supabase
-      const { data, error } = await supabase.storage
-        .from('logos')
-        .upload(`logos/${Date.now()}-${file.name}`, file);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('business-logos')
+        .upload(fileName, file);
 
-      if (error) throw error;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      console.log('Upload successful:', uploadData);
 
       // Get public URL
-      const publicUrl = supabase.storage
-        .from('logos')
-        .getPublicUrl(`logos/${Date.now()}-${file.name}`).data.publicUrl;
+      const { data: urlData } = supabase.storage
+        .from('business-logos')
+        .getPublicUrl(fileName);
 
-      console.log('Uploaded file URL:', publicUrl);
+      console.log('Generated public URL:', urlData.publicUrl);
 
-      // Update both states
-      setFormData(prev => {
-        console.log('Updating formData with logo:', publicUrl);
-        return { ...prev, business_logo: publicUrl };
-      });
-      setLogoPreview(publicUrl);
+      // Update form data
+      const updatedSettings = {
+        ...formData,
+        business_logo: fileName
+      };
 
-      // Save immediately
-      const result = await dispatch(updateSettings({ 
-        settings: { ...formData, business_logo: publicUrl } 
-      })).unwrap();
-      console.log('Save result:', result);
+      console.log('Updating settings with:', updatedSettings);
+
+      // Save to database
+      const result = await dispatch(updateSettings({ settings: updatedSettings })).unwrap();
+      console.log('Settings update result:', result);
+
+      setFormData(updatedSettings);
+      setLogoPreview(urlData.publicUrl);
 
       toast.success('Logo uploaded successfully');
     } catch (error) {
-      setSelectedFileName(''); // Clear filename on error
-      console.error('Upload error:', error);
-      toast.error('Failed to upload logo');
+      console.error('Full error details:', error);
+      setSelectedFileName('');
+      toast.error('Failed to upload logo: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -201,8 +225,19 @@ export default function SettingsPage() {
                   </span>
                 </div>
               </div>
-              {/* Only show logo preview after successful upload */}
-              
+              {/* Add logo preview */}
+              {logoPreview && (
+                <div className="mt-2">
+                  <img 
+                    src={supabase.storage
+                      .from('business-logos')
+                      .getPublicUrl(formData.business_logo)
+                      .data.publicUrl}
+                    alt="Business Logo"
+                    className="max-h-20 object-contain"
+                  />
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
