@@ -43,11 +43,12 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
   if (!isOpen) return null;
 
   const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'EUR', label: 'EUR - Euro' },
-    { value: 'GBP', label: 'GBP - British Pound' },
-    { value: 'PHP', label: 'PHP - Philippine Peso' },
-    { value: 'CAD', label: 'CAD - Canadian Dollar' },
+    { value: '$', label: 'USD - US Dollar' },
+    { value: '€', label: 'EUR - Euro' },
+    { value: '£', label: 'GBP - British Pound' },
+    { value: '₱', label: 'PHP - Philippine Peso' },
+    { value: 'CA$', label: 'CAD - Canadian Dollar' },
+    { value: 'PKR', label: 'PKR - Pakistani Rupee' },
   ];
 
   return (

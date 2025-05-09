@@ -10,7 +10,7 @@ import EditInvoiceModal from './EditInvoiceModal';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-import { generatePDF } from '@/utils/generatePDF';
+import { generatePDF, getInvoiceFilename } from '@/utils/generatePDF';
 import { sendEmail } from '@/utils/email';
 import { formatDate } from '@/utils/dateFormat';
 import { Settings } from '@/types/settings';
@@ -93,7 +93,7 @@ export default function InvoicesTable({
     current_invoice_num: 1,
     email_template: '',
     email_subject: '',
-    email_signature: ''
+    email_signature: null
   };
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function InvoicesTable({
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `invoice-${invoice.invoice_number}.pdf`;
+      link.download = getInvoiceFilename(invoice);
       
       // Trigger download
       document.body.appendChild(link);
@@ -193,6 +193,18 @@ export default function InvoicesTable({
     }
   };
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        resolve(base64String.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleSendEmail = async (invoice: Invoice) => {
     try {
       setEmailingId(invoice.id);
@@ -201,8 +213,7 @@ export default function InvoicesTable({
         throw new Error('Client email is required');
       }
 
-      // Generate PDF
-      console.log('Generating PDF...');
+      // Generate PDF with complete settings
       const pdfBlob = await generatePDF(invoice, settings || {
         ...defaultSettings,
         id: 'default',
@@ -210,24 +221,11 @@ export default function InvoicesTable({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       } as Settings);
-
-      console.log('PDF generated, converting to base64...');
       
-      // Convert to base64
-      const base64PDF = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          resolve(base64String.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(pdfBlob);
-      });
+      const base64PDF = await blobToBase64(pdfBlob);
 
-      console.log('Sending email with PDF...');
-      
       // Send email
-      await sendEmail({
+      const response = await sendEmail({
         to: invoice.client.email,
         from: settings?.wise_email || '',
         subject: `Invoice ${invoice.invoice_number} from ${settings?.business_name || ''}`,
@@ -236,7 +234,13 @@ export default function InvoicesTable({
           invoiceNumber: invoice.invoice_number,
           amount: `${invoice.client.currency || '€'}${invoice.total.toFixed(2)}`,
           dueDate: invoice.due_date || formatDate(invoice.date),
-          businessName: settings?.business_name || ''
+          businessName: settings?.business_name || '',
+          items: invoice.items?.map(item => ({
+            name: item.name || item.description,
+            quantity: 1,
+            price: item.amount,
+            total: item.amount
+          })) || []
         }),
         attachment: {
           filename: `invoice-${invoice.invoice_number}.pdf`,
@@ -246,10 +250,17 @@ export default function InvoicesTable({
         }
       });
 
-      toast.success('Invoice sent successfully');
+      // Handle both Response objects and direct returns
+      const success = response instanceof Response ? response.ok : response;
+
+      if (!success) {
+        throw new Error('Failed to send email');
+      }
+
+      toast.success('Email sent successfully');
     } catch (error) {
-      console.error('Failed to send invoice:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
+      console.error('Error sending email:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send email');
     } finally {
       setEmailingId(null);
     }
@@ -496,12 +507,15 @@ export default function InvoicesTable({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-white rounded-lg shadow-lg">
+      {/* Table Header Actions */}
+      
+
       {/* Table view for sm and above */}
-      <div className="hidden sm:block overflow-x-auto">
+      <div className="hidden sm:block ">
         <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
+          <thead className="border-b border-gray-200">
+            <tr className="border-b border-gray-200">
               {isSelectionMode && (
                 <th className="px-6 py-3 text-left">
                   <input
@@ -518,12 +532,12 @@ export default function InvoicesTable({
                 </th>
               )}
               
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase ">Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:block">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="text-center  p-2 font-semibold text-gray-600">INVOICE #</th>
+              <th className="text-center p-2 font-semibold text-gray-600">CLIENTS</th>
+              <th className="text-center p-2 font-semibold text-gray-600 ">AMOUNT</th>
+              <th className="text-center p-2 font-semibold text-gray-600">DATE</th>
+              <th className="text-center p-2 font-semibold text-gray-600">STATUS</th>
+              <th className="text-center p-2 font-semibold text-gray-600">ACTIONS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -538,12 +552,12 @@ export default function InvoicesTable({
                 <tr 
                   key={invoice.id}
                   onClick={(e) => handleRowClick(e, invoice)}
-                  className={`cursor-pointer hover:bg-gray-50 ${
+                  className={ ` cursor-pointer hover:bg-gray-50 ${
                     selectedInvoices.includes(invoice.id) ? 'bg-blue-50' : ''
                   }`}
                 >
                   {isSelectionMode && (
-                    <td className="px-6 py-4">
+                    <td className="text-center px-6 py-4">
                       <input
                         type="checkbox"
                         checked={selectedInvoices.includes(invoice.id)}
@@ -558,10 +572,10 @@ export default function InvoicesTable({
                       />
                     </td>
                   )}
-                  <td className="px-6 py-4">{invoice.invoice_number}</td>
-                  <td className="px-6 py-4">{invoice.client?.name}</td>
-                  <td className="px-6 py-4">${invoice.total}</td>
-                  <td className="px-6 py-4 hidden md:block">
+                  <td className="text-center px-6 py-4">{invoice.invoice_number}</td>
+                  <td className="text-center px-6 py-4">{invoice.client?.name}</td>
+                  <td className="text-center px-6 py-4">${invoice.total}</td>
+                  <td className="text-center px-6 py-4 hidden md:block">
                     {editingDate === invoice.id ? (
                       <input
                         type="date"
@@ -602,7 +616,7 @@ export default function InvoicesTable({
                     ) : (
                       <div 
                         onClick={() => handleStatusClick(invoice.id)}
-                        className="cursor-pointer "
+                        className=" w-auto cursor-pointer "
                       >
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(invoice.status)}`}>
                           {invoice.status}
@@ -814,11 +828,11 @@ export default function InvoicesTable({
       </div>
 
       {/* Card view for mobile */}
-      <div className="sm:hidden p-4 space-y-4">
+      <div className="sm:hidden pt-10 pb-10 pr-4 pl-4 space-y-4">
         {invoices.map((invoice) => (
           <div 
             key={invoice.id} 
-            className="bg-white rounded-lg shadow-md border border-gray-100 cursor-pointer"
+            className="bg-gray-100 rounded-lg shadow-md border border-gray-100 cursor-pointer"
             onClick={(e) => handleCardClick(invoice)}
           >
             {/* Selection Checkbox */}

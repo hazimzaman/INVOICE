@@ -4,11 +4,27 @@ interface EmailVariables {
   amount: string;
   dueDate: string;
   businessName: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }>;
 }
 
 export const parseEmailTemplate = (template: string, variables: EmailVariables) => {
   if (!template) {
-    // Default professional template if none provided
+    // Generate items table HTML
+    const itemsTableRows = variables.items?.map(item => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 12px 0; color: #1f2937;">${item.name}</td>
+        <td style="padding: 12px 0; text-align: center; color: #1f2937;">${item.quantity}</td>
+        <td style="padding: 12px 0; text-align: right; color: #1f2937;">$${item.price.toFixed(2)}</td>
+        <td style="padding: 12px 0; text-align: right; color: #1f2937;">$${item.total.toFixed(2)}</td>
+      </tr>
+    `).join('') || '';
+
+    // Default professional template with items table
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #333;">
         <div style="text-align: left; margin-bottom: 30px;">
@@ -39,6 +55,17 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
               <td style="padding: 8px 0; text-align: right;">${variables.dueDate}</td>
             </tr>
           </table>
+
+          <h3 style="margin: 20px 0 15px 0; color: #1e40af;">Invoice Items:</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr style="border-bottom: 2px solid #e2e8f0;">
+              <th style="padding: 8px 0; text-align: left; color: #64748b;">Item</th>
+              <th style="padding: 8px 0; text-align: center; color: #64748b;">Qty</th>
+              <th style="padding: 8px 0; text-align: right; color: #64748b;">Price</th>
+              <th style="padding: 8px 0; text-align: right; color: #64748b;">Total</th>
+            </tr>
+            ${itemsTableRows}
+          </table>
         </div>
 
         <div style="margin-bottom: 30px;">
@@ -59,7 +86,7 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
     `;
   }
 
-  // Replace both {{variable}} and {variable} formats
+  // Replace variables in custom template
   const replacements = {
     '{clientName}': variables.clientName,
     '{invoiceNumber}': variables.invoiceNumber,
@@ -71,7 +98,16 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
     '{{total_amount}}': variables.amount,
     '{{due_date}}': variables.dueDate,
     '{{business_name}}': variables.businessName,
-    '{{contact_email}}': variables.businessName
+    '{{contact_email}}': variables.businessName,
+    // Add items table replacement if needed in custom template
+    '{{items_table}}': variables.items?.map(item => `
+      <tr>
+        <td>${item.name}</td>
+        <td style="text-align: center;">${item.quantity}</td>
+        <td style="text-align: right;">$${item.price.toFixed(2)}</td>
+        <td style="text-align: right;">$${item.total.toFixed(2)}</td>
+      </tr>
+    `).join('') || ''
   };
 
   return Object.entries(replacements).reduce((text, [key, value]) => {

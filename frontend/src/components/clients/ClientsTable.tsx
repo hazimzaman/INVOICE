@@ -123,7 +123,7 @@ export default function ClientsTable({ onAddClick, onEdit, onDelete }: ClientsTa
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left p-2 font-semibold text-gray-600 sm:text-sm">NAME</th>
+                <th className="text-left p-2 font-semibold text-gray-600 ">NAME</th>
                 <th className="text-left p-2 font-semibold text-gray-600">COMPANY</th>
                 <th className="text-left p-2 font-semibold text-gray-600">CURRENCY</th>
                 <th className="text-left p-2 font-semibold text-gray-600">CREATED</th>

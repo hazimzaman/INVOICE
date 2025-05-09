@@ -8,8 +8,10 @@ import { Settings } from '@/types/settings';
 import { useLoading } from '@/contexts/LoadingContext';
 import Image from 'next/image';
 import { FiMenu, FiUser, FiSettings, FiLogOut, FiX, FiMoreVertical } from 'react-icons/fi';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaPowerOff } from "react-icons/fa6";
+import { supabase } from '@/lib/supabase';
+import { toast } from 'react-hot-toast';
 
 export default function Header() {
   const router = useRouter();
@@ -21,6 +23,7 @@ export default function Header() {
   const [isAuthDropdownOpen, setIsAuthDropdownOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get user's name from user metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -29,12 +32,31 @@ export default function Header() {
   const pathname = usePathname();
   const isPasswordResetPage = pathname?.includes('reset-password') || pathname?.includes('update-password');
 
+  // Handle clicks outside of dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       router.push('/login');
+      toast.success('Logged out successfully');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
     }
   };
 
@@ -105,13 +127,14 @@ export default function Header() {
 
           {/* Mobile Navigation Links */}
           <div className="flex flex-col space-y-4">
-            <Link 
-              href="/invoices" 
+          <Link 
+              href="/reports" 
               className="text-blue-600 hover:text-blue-700 font-semibold py-2"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Invoices
+              Dashboard
             </Link>
+            
             <Link 
               href="/clients" 
               className="text-blue-600 hover:text-blue-700 font-semibold py-2"
@@ -120,15 +143,24 @@ export default function Header() {
               Clients
             </Link>
             <Link 
-              href="/reports" 
+              href="/invoices" 
               className="text-blue-600 hover:text-blue-700 font-semibold py-2"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Reports
+              Invoices
             </Link>
+           
           </div>
         </div>
       </div>
+
+      {/* Backdrop overlay with blur when dropdown is open */}
+      {isDropdownOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          onClick={() => setIsDropdownOpen(false)}
+        />
+      )}
 
       {/* Header */}
       <header className={`fixed w-full bg-white shadow-md transition-transform duration-300 z-50 ${
@@ -137,7 +169,7 @@ export default function Header() {
         <div className="container mx-auto max-w-[1240px] px-4">
           <nav className="py-4">
             <div className="flex items-center gap-4 justify-between">
-              <div className="flex items-center space-x-4 gap-5 w-full justify-between md:justify-start">
+              <div className="w-full flex items-center space-x-4 gap-5 justify-between md:justify-start md:w-auto">
                 <Link href="/" className="text-gray-800 hover:text-gray-600 font-semibold m-0">
                   <Image 
                     src="/logo.png" 
@@ -151,6 +183,20 @@ export default function Header() {
                 {/* Desktop Navigation - Now shows in logo div on md screens */}
                 {user && !isPasswordResetPage && (
                   <nav className="hidden md:flex items-center space-x-4">
+                   <Link href="/reports" className="text-gray-800 hover:text-gray-600 relative
+             before:content-[''] before:absolute before:bottom-[-1] before:left-0
+             before:h-[2px] before:bg-blue-600 before:w-0
+             before:transition-all before:duration-300 before:ease-in-out
+             hover:before:w-full">
+                      Dashboard
+                    </Link>
+                    <Link href="/clients" className="text-gray-800 hover:text-gray-600 relative
+             before:content-[''] before:absolute before:bottom-[-1] before:left-0
+             before:h-[2px] before:bg-blue-600 before:w-0
+             before:transition-all before:duration-300 before:ease-in-out
+             hover:before:w-full">
+                      Clients
+                    </Link>
                    <Link
   href="/invoices"
   className="text-gray-800 hover:text-gray-600 relative
@@ -162,20 +208,8 @@ export default function Header() {
   Invoices
 </Link>
 
-                    <Link href="/clients" className="text-gray-800 hover:text-gray-600 relative
-             before:content-[''] before:absolute before:bottom-[-1] before:left-0
-             before:h-[2px] before:bg-blue-600 before:w-0
-             before:transition-all before:duration-300 before:ease-in-out
-             hover:before:w-full">
-                      Clients
-                    </Link>
-                    <Link href="/reports" className="text-gray-800 hover:text-gray-600 relative
-             before:content-[''] before:absolute before:bottom-[-1] before:left-0
-             before:h-[2px] before:bg-blue-600 before:w-0
-             before:transition-all before:duration-300 before:ease-in-out
-             hover:before:w-full">
-                      Reports
-                    </Link>
+                    
+                   
                   </nav>
                 )}
                 
@@ -250,16 +284,16 @@ export default function Header() {
                     </div>
                   </>
                 ) : (
-                  <div className="relative">
+                  <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={toggleDropdown}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none cursor-pointer"
+                      className="flex w-auto items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none cursor-pointer"
                     >
                       <FiUser className="w-5 h-5 m-0" />
-                      <span className="hidden sm:inline">{userName}</span>
+                      <span className="hidden w-auto md:inline">{userName}</span>
                     </button>
 
-                    {/* Dropdown Menu */}
+                    {/* Dropdown Menu with higher z-index */}
                     {isDropdownOpen && (
                       <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                         <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">

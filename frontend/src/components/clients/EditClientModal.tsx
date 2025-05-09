@@ -105,6 +105,9 @@ export default function EditClientModal({ isOpen, onClose, onSave, client }: Edi
               <option value="€">EUR (€)</option>
               <option value="$">USD ($)</option>
               <option value="£">GBP (£)</option>
+              <option value="₱">PHP (₱)</option>
+              <option value="CA$">CAD (CA$)</option>
+              <option value="PKR">PKR (PKR)</option>
             </select>
           </div>
 

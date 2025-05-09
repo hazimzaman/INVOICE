@@ -16,62 +16,57 @@ const initialState: SettingsState = {
 
 // Fetch settings
 export const fetchSettings = createAsyncThunk(
-  'settings/fetch',
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        throw new Error('No authenticated user');
-      }
-
-      // First try to get existing settings
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      // If no settings exist, create default settings
-      if (!data) {
-        const defaultSettings = {
-          user_id: session.user.id,
-          business_name: '',
-          business_logo: '',
-          business_address: '',
-          contact_name: '',
-          contact_email: '',
-          contact_phone: '',
-          wise_email: '',
-          invoice_prefix: 'INV-',
-          footer_note: '',
-          current_invoice_num: 1,
-          email_template: '',
-          email_subject: '',
-          email_signature: ''
-        };
-
-        const { data: newSettings, error: insertError } = await supabase
-          .from('settings')
-          .insert(defaultSettings)
-          .select()
-          .single();
-
-        if (insertError) {
-          throw insertError;
-        }
-
-        return newSettings;
-      }
-
-      return data;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch settings');
+  'settings/fetchSettings',
+  async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user) {
+      throw new Error('No authenticated user');
     }
+
+    // First try to get existing settings
+    const { data: existingSettings, error: fetchError } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('user_id', session.session.user.id)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      throw fetchError;
+    }
+
+    if (existingSettings) {
+      return existingSettings;
+    }
+
+    // If no settings exist, create default settings
+    const defaultSettings: Partial<Settings> = {
+      user_id: session.session.user.id,
+      business_name: '',
+      business_logo: '',
+      business_address: '',
+      contact_name: '',
+      contact_email: '',
+      contact_phone: '',
+      wise_email: '',
+      invoice_prefix: 'INV-',
+      footer_note: '',
+      current_invoice_num: 1,
+      email_template: '',
+      email_subject: '',
+      email_signature: ''
+    };
+
+    const { data: newSettings, error: insertError } = await supabase
+      .from('settings')
+      .insert([defaultSettings])
+      .select()
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    return newSettings;
   }
 );
 
@@ -125,7 +120,7 @@ const settingsSlice = createSlice({
       })
       .addCase(fetchSettings.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message || 'Failed to fetch settings';
       })
       // Update settings
       .addCase(updateSettings.pending, (state) => {

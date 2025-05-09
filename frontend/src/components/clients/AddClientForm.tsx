@@ -5,6 +5,18 @@ import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { addClient } from '@/store/slices/clientsSlice';
 
+const CURRENCIES = [
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'PKR', label: 'PKR - Pakistani Rupee' },
+  { value: 'AUD', label: 'AUD - Australian Dollar' },
+  { value: 'CAD', label: 'CAD - Canadian Dollar' },
+  { value: 'PKR', label: 'INR - PAKISTAN Rupee' },
+  
+  
+];
+
 const AddClientForm: React.FC = () => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState({
@@ -77,17 +89,20 @@ const AddClientForm: React.FC = () => {
         />
       </div>
       <div>
-        <label className="block font-medium mb-2">Currency</label>
+        <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
+          Currency
+        </label>
         <select
+          id="currency"
           value={formData.currency}
           onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-          className="w-full p-2 border rounded"
-          required
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
         >
-          <option value="USD">USD</option>
-          <option value="EUR">EUR</option>
-          <option value="GBP">GBP</option>
-          {/* Add more currencies as needed */}
+          {CURRENCIES.map(currency => (
+            <option key={currency.value} value={currency.value}>
+              {currency.label}
+            </option>
+          ))}
         </select>
       </div>
       <button

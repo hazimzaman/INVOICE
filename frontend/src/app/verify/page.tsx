@@ -22,7 +22,9 @@ export default function VerifyPage() {
     const verify = async () => {
       try {
         await verifyEmail(token);
-        toast.success('Email verified successfully!');
+        toast.success('Email verified successfully!', {
+          duration: 5000
+        });
         router.push('/login');
       } catch (err) {
         toast.error('Failed to verify email');
