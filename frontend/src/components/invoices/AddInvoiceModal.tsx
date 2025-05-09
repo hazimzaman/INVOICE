@@ -28,10 +28,10 @@ export default function AddInvoiceModal({ isOpen, onClose }: AddInvoiceModalProp
   const generateInvoiceNumber = () => {
     if (!settings) return '';
     
-    const prefix = settings.invoice_prefix || 'INV-';
     const currentNumber = settings.current_invoice_num;
     const paddedNumber = String(currentNumber).padStart(3, '0');
-    return `${prefix}${paddedNumber}`;
+    // Only add prefix if it exists in settings
+    return settings.invoice_prefix ? `${settings.invoice_prefix}${paddedNumber}` : paddedNumber;
   };
 
   // Define initial states

@@ -25,7 +25,7 @@ export default function Page() {
 
   return (
     <ProtectedRoute>
-     <section className='container mx-auto px-4 pt-35 pb-20'>
+     <section className='container mx-auto px-4 pt-25 pb-20'>
      <ClientsTable 
         onAddClick={() => setIsAddModalOpen(true)} 
       />

@@ -80,7 +80,7 @@ export default function ClientsTable({ onAddClick, onEdit, onDelete }: ClientsTa
 
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.company.toLowerCase().includes(searchQuery.toLowerCase())
+    client.company?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const toggleDropdown = (clientId: string) => {

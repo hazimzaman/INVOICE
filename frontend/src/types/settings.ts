@@ -8,7 +8,7 @@ export interface Settings {
   contact_email: string | null;
   contact_phone: string | null;
   wise_email: string | null;
-  invoice_prefix: string;
+  invoice_prefix: string | null;
   footer_note: string | null;
   current_invoice_num: number;
   email_template: string | null;

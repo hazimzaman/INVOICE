@@ -7,10 +7,11 @@ import { checkAuth } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useDispatch } from 'react-redux';
 import { updateSettings as dispatchUpdateSettings } from '@/store/slices/settingsSlice';
+import { AppDispatch } from '@/store/store';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<Partial<Settings>>({
@@ -26,13 +27,14 @@ export default function SettingsPage() {
     wise_email: '',
     
     // Invoice Settings
-    invoice_prefix: 'INV-',
+    invoice_prefix: null,
     current_invoice_num: 1,
     footer_note: '',
     
     // Email Settings
     email_template: '',
-    email_subject: ''
+    email_subject: '',
+    email_signature: null
   });
 
   useEffect(() => {
@@ -64,21 +66,20 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
+
     try {
-      setSaving(true);
-      
-      // Make sure required fields are included
-      const updatedSettings = {
+      const updatedSettings: Partial<Settings> = {
         ...settings,
-        current_invoice_num: settings.current_invoice_num || 1,
-        invoice_prefix: settings.invoice_prefix || 'INV-'
+        // Ensure invoice_prefix is null if empty string
+        invoice_prefix: settings.invoice_prefix?.trim() || null
       };
 
       await dispatch(dispatchUpdateSettings(updatedSettings)).unwrap();
       toast.success('Settings saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

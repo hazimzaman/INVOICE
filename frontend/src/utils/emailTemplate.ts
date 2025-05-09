@@ -6,9 +6,9 @@ interface EmailVariables {
   businessName: string;
   items: Array<{
     name: string;
-    quantity: number;
+   
     price: number;
-    total: number;
+    
   }>;
 }
 
@@ -18,9 +18,9 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
     const itemsTableRows = variables.items?.map(item => `
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 12px 0; color: #1f2937;">${item.name}</td>
-        <td style="padding: 12px 0; text-align: center; color: #1f2937;">${item.quantity}</td>
+        
         <td style="padding: 12px 0; text-align: right; color: #1f2937;">$${item.price.toFixed(2)}</td>
-        <td style="padding: 12px 0; text-align: right; color: #1f2937;">$${item.total.toFixed(2)}</td>
+      
       </tr>
     `).join('') || '';
 
@@ -60,9 +60,9 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
           <table style="width: 100%; border-collapse: collapse;">
             <tr style="border-bottom: 2px solid #e2e8f0;">
               <th style="padding: 8px 0; text-align: left; color: #64748b;">Item</th>
-              <th style="padding: 8px 0; text-align: center; color: #64748b;">Qty</th>
+              
               <th style="padding: 8px 0; text-align: right; color: #64748b;">Price</th>
-              <th style="padding: 8px 0; text-align: right; color: #64748b;">Total</th>
+              
             </tr>
             ${itemsTableRows}
           </table>
@@ -103,9 +103,9 @@ export const parseEmailTemplate = (template: string, variables: EmailVariables) 
     '{{items_table}}': variables.items?.map(item => `
       <tr>
         <td>${item.name}</td>
-        <td style="text-align: center;">${item.quantity}</td>
+        
         <td style="text-align: right;">$${item.price.toFixed(2)}</td>
-        <td style="text-align: right;">$${item.total.toFixed(2)}</td>
+        
       </tr>
     `).join('') || ''
   };
