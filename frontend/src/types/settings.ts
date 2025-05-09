@@ -11,13 +11,11 @@ export interface Settings {
   invoice_prefix: string;
   footer_note: string | null;
   current_invoice_num: number;
-  created_at: string;
-  updated_at: string;
   email_template: string | null;
   email_subject: string | null;
-  email_signature: string;
-  cc_email: string;
-  bcc_email: string;
+  email_signature: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BusinessInfo {

@@ -16,6 +16,7 @@ import { formatDate } from '@/utils/dateFormat';
 import { Settings } from '@/types/settings';
 import DownloadConfirmationModal from './DownloadConfirmationModal';
 import { parseEmailTemplate } from '@/utils/emailTemplate';
+import { fetchSettings } from '@/store/slices/settingsSlice';
 
 interface InvoicesTableProps {
   searchQuery: string;
@@ -23,6 +24,7 @@ interface InvoicesTableProps {
   statusFilter: string;
   isSelectionMode: boolean;
   setIsSelectionMode: (mode: boolean) => void;
+  onSelectInvoice: (invoice: Invoice) => void;
 }
 
 type SortOrder = 'asc' | 'desc';
@@ -40,11 +42,12 @@ export default function InvoicesTable({
   filterType, 
   statusFilter,
   isSelectionMode,
-  setIsSelectionMode 
+  setIsSelectionMode,
+  onSelectInvoice
 }: InvoicesTableProps) {
   const dispatch = useAppDispatch();
   const { invoices, loading } = useAppSelector((state) => state.invoices);
-  const settings = useAppSelector(state => state.settings.data);
+  const { data: settings, loading: settingsLoading, error: settingsError } = useAppSelector(state => state.settings);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -77,7 +80,7 @@ export default function InvoicesTable({
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [emailingId, setEmailingId] = useState<string | null>(null);
 
-  const defaultSettings: Settings = {
+  const defaultSettings: Partial<Settings> = {
     business_name: '',
     business_logo: '',
     business_address: '',
@@ -85,15 +88,27 @@ export default function InvoicesTable({
     contact_email: '',
     contact_phone: '',
     wise_email: '',
-    invoice_prefix: '',
+    invoice_prefix: 'INV-',
     footer_note: '',
-    current_invoice_number: 0,
+    current_invoice_num: 1,
     email_template: '',
     email_subject: '',
-    email_signature: '',
-    cc_email: '',
-    bcc_email: ''
+    email_signature: ''
   };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        if (!settings) {
+          await dispatch(fetchSettings()).unwrap();
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+
+    initializeData();
+  }, [dispatch, settings]);
 
   const handleStatusUpdate = async (invoiceId: string, newStatus: string) => {
     try {
@@ -144,18 +159,31 @@ export default function InvoicesTable({
         [invoice.id]: { ...prev[invoice.id], download: true }
       }));
       
-      const pdfBlob = await generatePDF(invoice, settings || defaultSettings);
-      const fileName = `invoice-${invoice.invoice_number}-${invoice.client?.name}.pdf`;
+      const pdfBlob = await generatePDF(invoice, settings || {
+        ...defaultSettings,
+        id: 'default',
+        user_id: 'default',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as Settings);
+
+      // Create download URL
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', fileName);
+      link.download = `invoice-${invoice.invoice_number}.pdf`;
+      
+      // Trigger download
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      
+      // Cleanup
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      
       toast.success('PDF downloaded successfully');
     } catch (error) {
+      console.error('Download error:', error);
       toast.error('Failed to download PDF');
     } finally {
       setLoadingStates(prev => ({
@@ -169,23 +197,59 @@ export default function InvoicesTable({
     try {
       setEmailingId(invoice.id);
       
-      await sendEmail(
-        invoice.client?.email || '',
-        settings?.email_subject || `Invoice ${invoice.invoice_number} from ${settings?.business_name || ''}`,
-        parseEmailTemplate(settings?.email_template || '', {
-          clientName: invoice.client?.name || '',
+      if (!invoice.client?.email) {
+        throw new Error('Client email is required');
+      }
+
+      // Generate PDF
+      console.log('Generating PDF...');
+      const pdfBlob = await generatePDF(invoice, settings || {
+        ...defaultSettings,
+        id: 'default',
+        user_id: 'default',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as Settings);
+
+      console.log('PDF generated, converting to base64...');
+      
+      // Convert to base64
+      const base64PDF = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          resolve(base64String.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      console.log('Sending email with PDF...');
+      
+      // Send email
+      await sendEmail({
+        to: invoice.client.email,
+        from: settings?.wise_email || '',
+        subject: `Invoice ${invoice.invoice_number} from ${settings?.business_name || ''}`,
+        body: parseEmailTemplate(settings?.email_template || '', {
+          clientName: invoice.client.name,
           invoiceNumber: invoice.invoice_number,
-          amount: `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
+          amount: `${invoice.client.currency || '€'}${invoice.total.toFixed(2)}`,
           dueDate: invoice.due_date || formatDate(invoice.date),
           businessName: settings?.business_name || ''
         }),
-        settings?.wise_email || ''
-      );
+        attachment: {
+          filename: `invoice-${invoice.invoice_number}.pdf`,
+          content: base64PDF,
+          encoding: 'base64',
+          type: 'application/pdf'
+        }
+      });
 
       toast.success('Invoice sent successfully');
     } catch (error) {
       console.error('Failed to send invoice:', error);
-      toast.error('Failed to send invoice');
+      toast.error(error instanceof Error ? error.message : 'Failed to send invoice');
     } finally {
       setEmailingId(null);
     }
@@ -274,7 +338,9 @@ export default function InvoicesTable({
   const handleMultiDelete = async () => {
     setShowMultiDeleteModal(false);
     try {
-      await Promise.all(selectedInvoices.map(id => dispatch(deleteInvoice(id)).unwrap()));
+      await Promise.all(
+        selectedInvoices.map(id => dispatch(deleteInvoice(id)))
+      );
       toast.success('Invoices deleted successfully');
       setSelectedInvoices([]);
       setIsMultiDeleteMode(false);
@@ -283,12 +349,17 @@ export default function InvoicesTable({
     }
   };
 
-  const toggleInvoiceSelection = (invoiceId: string) => {
-    setSelectedInvoices(prev => 
-      prev.includes(invoiceId) 
-        ? prev.filter(id => id !== invoiceId)
-        : [...prev, invoiceId]
-    );
+  const handleRowClick = (e: React.MouseEvent, invoice: Invoice) => {
+    e.stopPropagation(); // Prevent event bubbling
+    if (isSelectionMode) {
+      // Handle multi-select logic
+      const isSelected = selectedInvoices.includes(invoice.id);
+      setSelectedInvoices(prev => 
+        isSelected ? prev.filter(id => id !== invoice.id) : [...prev, invoice.id]
+      );
+    } else {
+      onSelectInvoice(invoice);
+    }
   };
 
   const handleMultiSendEmail = async () => {
@@ -464,13 +535,19 @@ export default function InvoicesTable({
               </tr>
             ) : (
               getFilteredAndSortedInvoices().map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-gray-50">
+                <tr 
+                  key={invoice.id}
+                  onClick={(e) => handleRowClick(e, invoice)}
+                  className={`cursor-pointer hover:bg-gray-50 ${
+                    selectedInvoices.includes(invoice.id) ? 'bg-blue-50' : ''
+                  }`}
+                >
                   {isSelectionMode && (
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
                         checked={selectedInvoices.includes(invoice.id)}
-                        onChange={() => {
+                        onChange={(e) => {
                           setSelectedInvoices(prev => 
                             prev.includes(invoice.id)
                               ? prev.filter(id => id !== invoice.id)
@@ -537,7 +614,8 @@ export default function InvoicesTable({
                     {/* Desktop Actions */}
                     <div className="hidden lg:flex items-center justify-end gap-2">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedInvoice(invoice);
                           setIsViewModalOpen(true);
                         }}
@@ -546,7 +624,8 @@ export default function InvoicesTable({
                         <FiEye className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedInvoice(invoice);
                           setIsEditModalOpen(true);
                         }}
@@ -555,7 +634,10 @@ export default function InvoicesTable({
                         <FiEdit2 className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => handleDownloadPDF(invoice)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPDF(invoice);
+                        }}
                         disabled={loadingStates[invoice.id]?.download}
                         className="p-2 text-purple-500 hover:text-purple-700 transition-colors relative cursor-pointer"
                       >
@@ -568,7 +650,10 @@ export default function InvoicesTable({
                         )}
                       </button>
                       <button
-                        onClick={() => handleSendEmail(invoice)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendEmail(invoice);
+                        }}
                         disabled={emailingId === invoice.id}
                         className={`p-2 text-green-500 hover:text-green-700 transition-colors relative cursor-pointer ${
                           emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
@@ -599,7 +684,10 @@ export default function InvoicesTable({
                         )}
                       </button>
                       <button
-                        onClick={() => handleDelete(invoice)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(invoice);
+                        }}
                         disabled={loadingStates[invoice.id]?.delete}
                         className="p-2 text-red-500 hover:text-red-700 transition-colors relative cursor-pointer"
                       >
@@ -616,7 +704,10 @@ export default function InvoicesTable({
                     {/* Mobile Actions Menu */}
                     <div className="lg:hidden relative">
                       <button
-                        onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id);
+                        }}
                         className="p-2 text-gray-600 hover:text-gray-800 cursor-pointer"
                       >
                         <FiMoreVertical className="w-5 h-5" />
@@ -627,11 +718,15 @@ export default function InvoicesTable({
                         <>
                           <div 
                             className="fixed inset-0 z-10"
-                            onClick={() => setOpenActionMenu(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenu(null);
+                            }}
                           />
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1">
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedInvoice(invoice);
                                 setIsViewModalOpen(true);
                                 setOpenActionMenu(null);
@@ -641,7 +736,8 @@ export default function InvoicesTable({
                               <FiEye className="w-4 h-4" /> View
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedInvoice(invoice);
                                 setIsEditModalOpen(true);
                                 setOpenActionMenu(null);
@@ -651,7 +747,8 @@ export default function InvoicesTable({
                               <FiEdit2 className="w-4 h-4" /> Edit
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleDownloadPDF(invoice);
                                 setOpenActionMenu(null);
                               }}
@@ -660,7 +757,8 @@ export default function InvoicesTable({
                               <FiDownload className="w-4 h-4" /> Download
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleSendEmail(invoice);
                                 setOpenActionMenu(null);
                               }}
@@ -694,7 +792,8 @@ export default function InvoicesTable({
                               )}
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleDelete(invoice);
                                 setOpenActionMenu(null);
                               }}
@@ -720,7 +819,7 @@ export default function InvoicesTable({
           <div 
             key={invoice.id} 
             className="bg-white rounded-lg shadow-md border border-gray-100 cursor-pointer"
-            onClick={() => handleCardClick(invoice)}
+            onClick={(e) => handleCardClick(invoice)}
           >
             {/* Selection Checkbox */}
             {isSelectionMode && (
@@ -728,7 +827,7 @@ export default function InvoicesTable({
                 <input
                   type="checkbox"
                   checked={selectedInvoices.includes(invoice.id)}
-                  onChange={() => {
+                  onChange={(e) => {
                     setSelectedInvoices(prev => 
                       prev.includes(invoice.id)
                         ? prev.filter(id => id !== invoice.id)
@@ -774,7 +873,10 @@ export default function InvoicesTable({
                     </select>
                   ) : (
                     <div 
-                      onClick={() => handleStatusClick(invoice.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusClick(invoice.id);
+                      }}
                       className="cursor-pointer inline-block"
                     >
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
@@ -787,7 +889,10 @@ export default function InvoicesTable({
                 {/* Actions Menu */}
                 <div className="relative">
                   <button
-                    onClick={() => setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id);
+                    }}
                     className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100 cursor-pointer"
                   >
                     <FiMoreVertical className="w-5 h-5" />
@@ -798,11 +903,15 @@ export default function InvoicesTable({
                     <>
                       <div 
                         className="fixed inset-0 z-[60]"
-                        onClick={() => setOpenActionMenu(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenu(null);
+                        }}
                       />
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[70] py-1 border border-gray-200">
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedInvoice(invoice);
                             setIsViewModalOpen(true);
                             setOpenActionMenu(null);
@@ -812,7 +921,8 @@ export default function InvoicesTable({
                           <FiEye className="w-4 h-4" /> View
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedInvoice(invoice);
                             setIsEditModalOpen(true);
                             setOpenActionMenu(null);
@@ -822,7 +932,8 @@ export default function InvoicesTable({
                           <FiEdit2 className="w-4 h-4" /> Edit
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDownloadPDF(invoice);
                             setOpenActionMenu(null);
                           }}
@@ -837,7 +948,8 @@ export default function InvoicesTable({
                           Download
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleSendEmail(invoice);
                             setOpenActionMenu(null);
                           }}
@@ -872,7 +984,8 @@ export default function InvoicesTable({
                           Send Email
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDelete(invoice);
                             setOpenActionMenu(null);
                           }}

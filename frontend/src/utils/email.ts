@@ -1,53 +1,44 @@
+interface EmailAttachment {
+  filename: string;
+  content: string;
+  encoding: string;
+  type: string;
+}
+
 interface EmailParams {
   to: string;
   subject: string;
   body: string;
-  attachments?: Array<{
-    filename: string;
-    content: string;
-  }>;
+  from: string;
+  attachment?: EmailAttachment;
 }
 
-export async function sendEmail(to: string, subject: string, html: string, attachments?: string) {
+export const sendEmail = async (params: EmailParams) => {
   try {
-    console.log('Sending email with params:', { to, subject, hasAttachments: !!attachments });
-    
-    // Validation
-    if (!to) throw new Error('Recipient email is required');
-    if (!subject) throw new Error('Email subject is required');
-    if (!html) throw new Error('Email content is required');
+    console.log('Sending email with params:', {
+      to: params.to,
+      subject: params.subject,
+      hasAttachment: !!params.attachment,
+      attachmentName: params.attachment?.filename
+    });
 
-    const response = await fetch('http://localhost:5001/api/send-email', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/send-email`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        to,
-        subject,
-        html,
-        attachments
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to send email');
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to send email');
     }
 
-    const data = await response.json();
-    console.log('Email sent successfully:', data);
-    return data;
+    return await response.json();
   } catch (error) {
-    console.error('Error sending email:', error);
-    // Add more detailed error logging
-    if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      console.error('Network error - Make sure the backend server is running on port 5001');
-    }
+    console.error('Email sending error:', error);
     throw error;
   }
-}
+};
 
 export const getPasswordResetEmailContent = (resetLink: string) => {
   return {

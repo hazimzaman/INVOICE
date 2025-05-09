@@ -25,16 +25,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Initialize Supabase with service role key
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true
-  },
-  db: {
-    schema: 'public'
-  }
-});
+// Initialize Supabase with service role key for admin operations
+const supabase = createClient(
+  process.env.SUPABASE_URL, 
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // Log the initialization
 console.log('Supabase client initialized with:', {
@@ -442,53 +437,87 @@ async function createVerifiedUser(email, name, passwordId) {
 app.post('/api/verify-email', async (req, res) => {
   try {
     const { token } = req.body;
-    console.log('Processing verification for token:', token);
+    console.log('Starting verification process for token:', token);
     
-    // Get unverified user data
+    // Get unverified user with password
     const { data: userData, error: userError } = await supabase
       .from('unverified_users')
-      .select('*')
+      .select(`
+        *,
+        temp_passwords(password)
+      `)
       .eq('verification_token', token)
       .eq('verified', false)
       .single();
 
-    if (userError || !userData) {
-      console.error('User fetch error:', userError);
+    if (userError) {
+      console.error('Database query error:', userError);
+      throw new Error('Failed to fetch user data');
+    }
+
+    if (!userData) {
+      console.error('No unverified user found for token:', token);
       throw new Error('Invalid or expired verification token');
     }
 
-    // Create verified user
-    const user = await createVerifiedUser(
-      userData.email,
-      userData.name,
-      userData.password_id
-    );
+    console.log('Found unverified user:', {
+      email: userData.email,
+      hasPassword: !!userData.temp_passwords?.password
+    });
 
-    // Mark as verified
+    // Create verified user in Supabase Auth
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: userData.email,
+      password: userData.temp_passwords?.password,
+      email_confirm: true,
+      user_metadata: {
+        name: userData.name
+      }
+    });
+
+    if (authError) {
+      console.error('Failed to create auth user:', authError);
+      throw new Error('Failed to create verified user account');
+    }
+
+    console.log('Created auth user:', { id: authUser.id, email: authUser.email });
+
+    // Mark as verified and cleanup
     const { error: updateError } = await supabase
       .from('unverified_users')
       .update({ verified: true })
       .eq('verification_token', token);
 
     if (updateError) {
-      console.error('Update error:', updateError);
-      throw new Error('Failed to update verification status');
+      console.error('Failed to mark user as verified:', updateError);
+      // Don't throw here as user is already created
+    }
+
+    // Delete temporary password
+    const { error: deleteError } = await supabase
+      .from('temp_passwords')
+      .delete()
+      .eq('id', userData.password_id);
+
+    if (deleteError) {
+      console.error('Failed to delete temporary password:', deleteError);
+      // Don't throw as this is cleanup
     }
 
     res.json({ 
       success: true,
       message: 'Email verified successfully',
       user: {
-        id: user.id,
-        email: user.email,
-        password: user.password // Send back raw password for initial sign-in
+        id: authUser.id,
+        email: authUser.email
       }
     });
+
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error('Verification process failed:', error);
     res.status(500).json({ 
       error: 'Failed to verify email',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -509,57 +538,39 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Add new endpoint for sending invoice emails
+// Add endpoint for sending emails with attachments
 app.post('/api/send-email', async (req, res) => {
   try {
-    const { to, subject, html, attachments } = req.body;
-    
-    console.log('Received email request:', {
+    const { to, subject, body, attachment } = req.body;
+
+    if (!to || !subject || !body) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    console.log('Processing email request:', {
       to,
       subject,
-      hasHtml: !!html,
-      hasAttachments: !!attachments
+      hasAttachment: !!attachment
     });
 
-    // Validate required fields
-    if (!to) {
-      throw new Error('Recipient email is required');
-    }
-    if (!subject) {
-      throw new Error('Email subject is required');
-    }
-    if (!html) {
-      throw new Error('Email content is required');
-    }
-
-    // Send the email
-    const info = await emailTransporter.sendMail({
+    const mailOptions = {
       from: process.env.SMTP_USER,
-      to: to,
-      subject: subject,
-      html: html,
-      attachments: attachments ? [
+      to,
+      subject,
+      html: body,
+      attachments: attachment ? [
         {
-          filename: 'invoice.pdf',
-          content: attachments,
-          encoding: 'base64'
+          filename: attachment.filename,
+          content: Buffer.from(attachment.content, 'base64'),
+          contentType: 'application/pdf'
         }
       ] : []
-    });
+    };
 
-    console.log('Email sent successfully:', {
-      messageId: info.messageId,
-      to: to,
-      subject: subject
-    });
-
-    res.json({ 
-      success: true, 
-      messageId: info.messageId 
-    });
-
+    await emailTransporter.sendMail(mailOptions);
+    res.json({ success: true });
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('Email sending error:', error);
     res.status(500).json({ 
       error: 'Failed to send email',
       details: error.message 
@@ -662,6 +673,66 @@ app.get('/api/test-db-access', async (req, res) => {
     res.status(500).json({ 
       error: 'Database access test failed',
       details: error.message
+    });
+  }
+});
+
+// Add signup endpoint
+app.post('/api/signup', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Create user with Supabase Auth
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name }
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      message: 'Account created successfully' 
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Failed to create account' 
+    });
+  }
+});
+
+// Add endpoint for sending verification emails
+app.post('/api/send-verification-email', async (req, res) => {
+  try {
+    const { email, name, token } = req.body;
+    
+    const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${token}`;
+    
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: email,
+      subject: 'Verify your email address',
+      html: `
+        <h1>Hello ${name}!</h1>
+        <p>Please click the link below to verify your email address:</p>
+        <a href="${verificationLink}">${verificationLink}</a>
+        <p>If you didn't request this, please ignore this email.</p>
+      `
+    };
+
+    await emailTransporter.sendMail(mailOptions);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send verification email',
+      details: error.message 
     });
   }
 });

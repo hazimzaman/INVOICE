@@ -9,6 +9,9 @@ import { supabase } from '@/lib/supabase';
 import InvoicesTable from './InvoicesTable';
 import AddInvoiceModal from './AddInvoiceModal';
 import { FiPlus, FiSearch, FiFilter, FiArrowUp, FiArrowDown, FiClock, FiCalendar, FiDollarSign, FiCheckCircle, FiAlertCircle, FiCheck } from 'react-icons/fi';
+import { InvoiceActions } from './InvoiceActions';
+import { Invoice } from '@/types/invoice';
+import { Settings } from '@/types/settings';
 
 type FilterType = 'all' | 'highest_paid' | 'lowest_paid' | 'latest' | 'oldest' | 'status';
 
@@ -21,6 +24,9 @@ export default function InvoicesPage() {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -35,6 +41,22 @@ export default function InvoicesPage() {
 
     checkAuth();
   }, [dispatch, router]);
+
+  // Fetch settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('*')
+        .single();
+      setSettings(settingsData);
+    };
+    fetchSettings();
+  }, []);
+
+  const handleInvoiceSelect = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+  };
 
   return (
   <section className='w-full pt-35 pb-20'>
@@ -206,6 +228,7 @@ export default function InvoicesPage() {
         statusFilter={statusFilter}
         isSelectionMode={isSelectionMode}
         setIsSelectionMode={setIsSelectionMode}
+        onSelectInvoice={handleInvoiceSelect}
       />
 
       {/* Add Invoice Modal */}
@@ -213,6 +236,16 @@ export default function InvoicesPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
       />
+
+      {/* Only show InvoiceActions when an invoice is selected */}
+      {selectedInvoice && settings && (
+        <div className="mt-4">
+          <InvoiceActions 
+            invoice={selectedInvoice} 
+            settings={settings} 
+          />
+        </div>
+      )}
     </div>
   </section>
     
