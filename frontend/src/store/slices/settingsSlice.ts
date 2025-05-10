@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { supabase } from '@/lib/supabase';
 import { Settings } from '@/types/settings';
+import { fetchInvoices } from './invoicesSlice';
 
 interface SettingsState {
   data: Settings | null;
@@ -99,6 +100,67 @@ export const updateSettings = createAsyncThunk(
   }
 );
 
+// Update the existing updateSettingsAndInvoices thunk
+export const updateSettingsAndInvoices = createAsyncThunk(
+  'settings/updateSettingsAndInvoices',
+  async (settingsData: Partial<Settings>, { dispatch, rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('No authenticated user');
+      }
+
+      // First update settings
+      const { data: updatedSettings, error: updateError } = await supabase
+        .from('settings')
+        .update({
+          ...settingsData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', session.user.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // If invoice prefix is being changed
+      if (settingsData.invoice_prefix) {
+        // Get all invoices
+        const { data: invoices, error: fetchError } = await supabase
+          .from('invoices')
+          .select('id, invoice_number')
+          .eq('user_id', session.user.id);
+
+        if (fetchError) throw fetchError;
+
+        // Process each invoice
+        for (const invoice of invoices || []) {
+          // Extract the numeric part from the invoice number
+          const numericPart = invoice.invoice_number.match(/\d+/)?.[0] || '';
+          if (numericPart) {
+            const newInvoiceNumber = `${settingsData.invoice_prefix}${numericPart}`;
+            
+            // Update invoice number
+            const { error: invoiceError } = await supabase
+              .from('invoices')
+              .update({ invoice_number: newInvoiceNumber })
+              .eq('id', invoice.id);
+
+            if (invoiceError) throw invoiceError;
+          }
+        }
+
+        // Refresh invoices to show updated numbers
+        await dispatch(fetchInvoices());
+      }
+
+      return updatedSettings;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update settings');
+    }
+  }
+);
+
 const settingsSlice = createSlice({
   name: 'settings',
   initialState,
@@ -132,6 +194,19 @@ const settingsSlice = createSlice({
         state.data = action.payload;
       })
       .addCase(updateSettings.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update settings and invoices
+      .addCase(updateSettingsAndInvoices.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateSettingsAndInvoices.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(updateSettingsAndInvoices.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

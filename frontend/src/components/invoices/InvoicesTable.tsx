@@ -233,10 +233,10 @@ export default function InvoicesTable({
           clientName: invoice.client.name,
           invoiceNumber: `${settings?.invoice_prefix || ''}${invoice.invoice_number}`,
           amount: `${invoice.client?.currency || '€'}${invoice.total.toFixed(2)}`,
-          dueDate: invoice.due_date || formatDate(invoice.date),
           businessName: settings?.business_name || '',
+          dueDate: formatDate(invoice.date),
           items: invoice.items?.map(item => ({
-            name: item.name || item.description,
+            name: item.name || item.description || 'Unnamed Item',
             quantity: 1,
             price: item.amount,
             total: item.amount
@@ -502,12 +502,12 @@ export default function InvoicesTable({
     setIsViewModalOpen(true);
   };
 
-  const handleInvoiceSelect = (invoiceId: string, e: React.MouseEvent) => {
+  const handleInvoiceSelect = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation(); // Prevent row click when clicking checkbox
     setSelectedInvoices(prev => 
-      prev.includes(invoiceId)
-        ? prev.filter(id => id !== invoiceId)
-        : [...prev, invoiceId]
+      prev.includes(id)
+        ? prev.filter(id => id !== id)
+        : [...prev, id]
     );
   };
 
@@ -862,13 +862,7 @@ export default function InvoicesTable({
                 <input
                   type="checkbox"
                   checked={selectedInvoices.includes(invoice.id)}
-                  onChange={(e) => {
-                    setSelectedInvoices(prev => 
-                      prev.includes(invoice.id)
-                        ? prev.filter(id => id !== invoice.id)
-                        : [...prev, invoice.id]
-                    );
-                  }}
+                  onChange={(e) => handleInvoiceSelect(invoice.id, e)}
                   className="rounded border-gray-300 text-blue-600 cursor-pointer"
                 />
               </div>

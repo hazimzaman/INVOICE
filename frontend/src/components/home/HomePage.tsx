@@ -7,10 +7,11 @@ export default function HomePage() {
   const { user } = useAuth();
 
   return (
-    <section className="h-[100vh]   px-4 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center ">
+    <>
+    <section className="h-[100vh] pt-[88px]    px-4 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center ">
       <div className="w-full max-w-[1240px] mx-auto grid grid-cols-1  gap-4 sm:grid-cols-2 ">
           <div className="flex flex-col justify-center gap-4">
-            <h1 className=" tracking-tight text-3xl font-extrabold text-gray-900 sm:text-4xl md:text-5xl">
+            <h1 className=" tracking-tight text-4xl font-extrabold text-gray-900 sm:text-4xl md:text-7xl">
               Welcome to
               <span className="block text-blue-600">Invoice Management System</span>
             </h1>
@@ -42,7 +43,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex justify-center items-center">
-            <img src="invoice.png" alt="" className="w-full h-full " />
+            <img src="hero2.png" alt="" className="w-full h-full " />
           </div>
         </div>
 
@@ -72,5 +73,17 @@ export default function HomePage() {
 
         {/* Test breakpoints section */}
     </section>
+
+    {/* <section className="bg-blue-600">
+      <div className="w-full bg-white max-w-[1240px] mx-auto grid grid-cols-1  gap-4 sm:grid-cols-2 ">
+      <div className="w-full h-full"></div>
+      <div className="flex flex-col justify-center gap-4">
+        <h1 className="text-white text-4xl font-bold ">Track. Analyze. Optimize.
+        All in One Dashboard</h1>
+      </div>
+        
+      </div>
+    </section> */}
+    </>
   );
 } 

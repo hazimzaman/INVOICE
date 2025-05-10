@@ -17,18 +17,13 @@ export interface Invoice {
   client_id: string;
   invoice_number: string;
   date: string;
-  due_date: string;
-  status: 'pending' | 'paid' | 'overdue';
+  notes: string;
+  items: InvoiceItem[];
   subtotal: number;
   total: number;
-  notes?: string;
+  status: 'pending' | 'paid' | 'overdue';
   created_at?: string;
   updated_at?: string;
-  items: Array<{
-    name: string;
-    description: string;
-    amount: number;
-  }>;
   client?: {
     name: string;
     email: string;
