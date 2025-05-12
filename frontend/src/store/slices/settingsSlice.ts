@@ -110,7 +110,7 @@ export const updateSettingsAndInvoices = createAsyncThunk(
         throw new Error('No authenticated user');
       }
 
-      // First update settings
+      // Update settings first
       const { data: updatedSettings, error: updateError } = await supabase
         .from('settings')
         .update({
@@ -135,12 +135,13 @@ export const updateSettingsAndInvoices = createAsyncThunk(
 
         // Process each invoice
         for (const invoice of invoices || []) {
-          // Extract the numeric part from the invoice number
-          const numericPart = invoice.invoice_number.match(/\d+/)?.[0] || '';
-          if (numericPart) {
-            const newInvoiceNumber = `${settingsData.invoice_prefix}${numericPart}`;
+          // Get just the last number sequence from the invoice number
+          const lastNumber = invoice.invoice_number.match(/\d+$/)?.[0];
+          
+          if (lastNumber) {
+            // Create new invoice number with new prefix and the last number
+            const newInvoiceNumber = `${settingsData.invoice_prefix}${lastNumber}`;
             
-            // Update invoice number
             const { error: invoiceError } = await supabase
               .from('invoices')
               .update({ invoice_number: newInvoiceNumber })
@@ -150,7 +151,7 @@ export const updateSettingsAndInvoices = createAsyncThunk(
           }
         }
 
-        // Refresh invoices to show updated numbers
+        // Refresh invoices
         await dispatch(fetchInvoices());
       }
 

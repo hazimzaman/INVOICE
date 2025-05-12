@@ -581,17 +581,7 @@ export default function InvoicesTable({
                 )}
                   <td className="text-center px-6 py-4">
                     <span className="text-gray-900">
-                      {/* {(() => {
-                        const cleanNumber = invoice.invoice_number.replace('INV-', '');
-                        return settings?.invoice_prefix 
-                          ? `${settings.invoice_prefix}${cleanNumber}`
-                          : cleanNumber;
-                      })()} */}
-                      {(() => {
-  const prefix = settings?.invoice_prefix ?? '';
-  const cleanNumber = invoice.invoice_number.replace(prefix, '');
-  return `${prefix}${cleanNumber}`;
-})()}
+                      {settings?.invoice_prefix || ''}{invoice.invoice_number.match(/\d+$/)?.[0] || invoice.invoice_number}
                     </span>
                   </td>
                   <td className="text-center px-6 py-4">{invoice.client?.name}</td>
