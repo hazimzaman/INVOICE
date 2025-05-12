@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice App",
+  title: "Invoice ",
   description: "Invoice management application",
 };
 

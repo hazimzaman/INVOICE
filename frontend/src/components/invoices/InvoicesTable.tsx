@@ -838,194 +838,201 @@ export default function InvoicesTable({
         </table>
       </div>
 
-      {/* Card view for mobile */}
-      <div className="sm:hidden pt-10 pb-10 pr-4 pl-4 space-y-4">
-        {invoices.map((invoice) => (
-          <div 
-            key={invoice.id} 
-            className="bg-gray-100 rounded-lg shadow-md border border-gray-100 cursor-pointer"
-            onClick={(e) => handleCardClick(invoice)}
-          >
-            {/* Selection Checkbox */}
-            {isSelectionMode && (
-              <div className="p-4 border-b border-gray-100 bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={selectedInvoices.includes(invoice.id)}
-                  onChange={(e) => handleInvoiceSelect(invoice.id, e)}
-                  className="rounded border-gray-300 text-blue-600 cursor-pointer"
-                />
-              </div>
-            )}
+      {/* Mobile Cards */}
+      <div className="sm:hidden">
+        {invoices.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {searchQuery ? 'No matching invoices found.' : 'No invoices found. Create your first invoice to get started.'}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {getFilteredAndSortedInvoices().map((invoice) => (
+              <div 
+                key={invoice.id} 
+                className="bg-gray-100 rounded-lg shadow-md border border-gray-100 cursor-pointer"
+                onClick={(e) => handleCardClick(invoice)}
+              >
+                {/* Selection Checkbox */}
+                {isSelectionMode && (
+                  <div className="p-4 border-b border-gray-100 bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedInvoices.includes(invoice.id)}
+                      onChange={(e) => handleInvoiceSelect(invoice.id, e)}
+                      className="rounded border-gray-300 text-blue-600 cursor-pointer"
+                    />
+                  </div>
+                )}
 
-            {/* Invoice Details */}
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">#{invoice.invoice_number}</h3>
-                  <p className="text-gray-600">{invoice.client?.name}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-gray-900">${invoice.total}</p>
-                  <p className="text-sm text-gray-500">{formatDate(invoice.date)}</p>
-                </div>
-              </div>
-
-              {/* Status and Actions Row */}
-              <div className="flex justify-between items-center pt-2">
-                {/* Status */}
-                <div>
-                  {editingStatus === invoice.id ? (
-                    <select
-                      value={invoice.status}
-                      onChange={(e) => {
-                        handleStatusUpdate(invoice.id, e.target.value);
-                        setEditingStatus(null);
-                      }}
-                      onBlur={() => setEditingStatus(null)}
-                      className="w-full p-1 border rounded-md cursor-pointer"
-                      autoFocus
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                      <option value="overdue">Overdue</option>
-                    </select>
-                  ) : (
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStatusClick(invoice.id);
-                      }}
-                      className="cursor-pointer inline-block"
-                    >
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
+                {/* Invoice Details */}
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">#{invoice.invoice_number}</h3>
+                      <p className="text-gray-600">{invoice.client?.name}</p>
                     </div>
-                  )}
-                </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">${invoice.total}</p>
+                      <p className="text-sm text-gray-500">{formatDate(invoice.date)}</p>
+                    </div>
+                  </div>
 
-                {/* Actions Menu */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id);
-                    }}
-                    className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100 cursor-pointer"
-                  >
-                    <FiMoreVertical className="w-5 h-5" />
-                  </button>
+                  {/* Status and Actions Row */}
+                  <div className="flex justify-between items-center pt-2">
+                    {/* Status */}
+                    <div>
+                      {editingStatus === invoice.id ? (
+                        <select
+                          value={invoice.status}
+                          onChange={(e) => {
+                            handleStatusUpdate(invoice.id, e.target.value);
+                            setEditingStatus(null);
+                          }}
+                          onBlur={() => setEditingStatus(null)}
+                          className="w-full p-1 border rounded-md cursor-pointer"
+                          autoFocus
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="overdue">Overdue</option>
+                        </select>
+                      ) : (
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusClick(invoice.id);
+                          }}
+                          className="cursor-pointer inline-block"
+                        >
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
+                            {invoice.status}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Dropdown Menu */}
-                  {openActionMenu === invoice.id && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-[60]"
+                    {/* Actions Menu */}
+                    <div className="relative">
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenActionMenu(null);
+                          setOpenActionMenu(openActionMenu === invoice.id ? null : invoice.id);
                         }}
-                      />
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[70] py-1 border border-gray-200">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedInvoice(invoice);
-                            setIsViewModalOpen(true);
-                            setOpenActionMenu(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <FiEye className="w-4 h-4" /> View
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedInvoice(invoice);
-                            setIsEditModalOpen(true);
-                            setOpenActionMenu(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <FiEdit2 className="w-4 h-4" /> Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadPDF(invoice);
-                            setOpenActionMenu(null);
-                          }}
-                          disabled={loadingStates[invoice.id]?.download}
-                          className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          {loadingStates[invoice.id]?.download ? (
-                            <FiLoader className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FiDownload className="w-4 h-4" />
-                          )}{' '}
-                          Download
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSendEmail(invoice);
-                            setOpenActionMenu(null);
-                          }}
-                          disabled={emailingId === invoice.id}
-                          className={`w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer ${
-                            emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          {emailingId === invoice.id ? (
-                            <div className="flex items-center">
-                              <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24">
-                                <circle 
-                                  className="opacity-25" 
-                                  cx="12" 
-                                  cy="12" 
-                                  r="10" 
-                                  stroke="currentColor" 
-                                  strokeWidth="4"
-                                  fill="none"
-                                />
-                                <path 
-                                  className="opacity-75" 
-                                  fill="currentColor" 
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                />
-                              </svg>
-                              Sending...
-                            </div>
-                          ) : (
-                            <FiMail className="w-4 h-4" />
-                          )}{' '}
-                          Send Email
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(invoice);
-                            setOpenActionMenu(null);
-                          }}
-                          disabled={loadingStates[invoice.id]?.delete}
-                          className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          {loadingStates[invoice.id]?.delete ? (
-                            <FiLoader className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FiTrash2 className="w-4 h-4" />
-                          )}{' '}
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
+                        className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100 cursor-pointer"
+                      >
+                        <FiMoreVertical className="w-5 h-5" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openActionMenu === invoice.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-[60]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenu(null);
+                            }}
+                          />
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[70] py-1 border border-gray-200">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInvoice(invoice);
+                                setIsViewModalOpen(true);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiEye className="w-4 h-4" /> View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInvoice(invoice);
+                                setIsEditModalOpen(true);
+                                setOpenActionMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-indigo-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              <FiEdit2 className="w-4 h-4" /> Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadPDF(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              disabled={loadingStates[invoice.id]?.download}
+                              className="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              {loadingStates[invoice.id]?.download ? (
+                                <FiLoader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiDownload className="w-4 h-4" />
+                              )}{' '}
+                              Download
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSendEmail(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              disabled={emailingId === invoice.id}
+                              className={`w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer ${
+                                emailingId === invoice.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {emailingId === invoice.id ? (
+                                <div className="flex items-center">
+                                  <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24">
+                                    <circle 
+                                      className="opacity-25" 
+                                      cx="12" 
+                                      cy="12" 
+                                      r="10" 
+                                      stroke="currentColor" 
+                                      strokeWidth="4"
+                                      fill="none"
+                                    />
+                                    <path 
+                                      className="opacity-75" 
+                                      fill="currentColor" 
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                  </svg>
+                                  Sending...
+                                </div>
+                              ) : (
+                                <FiMail className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(invoice);
+                                setOpenActionMenu(null);
+                              }}
+                              disabled={loadingStates[invoice.id]?.delete}
+                              className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                            >
+                              {loadingStates[invoice.id]?.delete ? (
+                                <FiLoader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiTrash2 className="w-4 h-4" />
+                              )}{' '}
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Bulk Action Button */}

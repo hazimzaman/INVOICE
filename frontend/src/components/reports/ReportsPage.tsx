@@ -313,7 +313,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Recent Invoices Table */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 hidden ">
         <h2 className="text-xl font-semibold mb-4">Recent Invoices</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
