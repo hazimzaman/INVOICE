@@ -1,0 +1,10 @@
+# Only ignore node_modules
+**/node_modules/
+
+# Don't ignore these files
+!.env
+!.env.local
+!.env.development
+!.env.production
+!.env.test
+!.next/ 
