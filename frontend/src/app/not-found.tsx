@@ -9,31 +9,33 @@ export default function NotFound() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className=" w-full max-w-[1240px] grid grid-cols-2 gap-6 text-center">
+    <section className="min-h-screen pt-[85px] pb-[100px] flex flex-col items-center justify-center px-4">
+      <div className=" w-full  max-w-[1240px] grid grid-cols-1 gap-6 text-center md:grid-cols-2">
        
-        <div className='flex items-center justify-end'>
+        <div className='flex items-center justify-center m-0 md:justify-end'>
         <Image
           src="/Group 102.png"
           alt="404 Error"
           width={400}
           height={400}
-          className=" mb-8 w-[400px] h-[600px] "
+          className=" mb-8 w-[200px] h-[310px] !mb-0  md:w-[400px] md:h-[580px]"
           priority
         />
         </div>
         
         <div className='flex flex-col items-center justify-center'>
-        <h1 className="text-9xl font-bold text-gray-900 mb-2 ">
+        <h1 className="text-6xl font-bold text-gray-900  md:text-8xl ">
          404
         </h1>
         <div>
-        <p className="text-gray-600 ">
+        <p className="text-gray-600  ">
         Page Not Found
         </p>
-        <p className="text-gray-600 mb-8">
+        <div className='w-full flex items-center justify-center'>
+        <p className="text-gray-600 text-center w-full mb-8 md:w-[70%] ">
           Something went wrong. The page you're looking for doesn't exist.
         </p>
+        </div>
         </div>
 
         <Link 
@@ -46,6 +48,6 @@ export default function NotFound() {
 
        
       </div>
-    </div>
+    </section>
   );
 } 
