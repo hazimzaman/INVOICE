@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/config';
 
 // Function to generate a random token
 function generateToken(length = 32) {
@@ -70,7 +71,7 @@ export default function SignupForm() {
         .join('');
 
       // Send verification request first (backend will handle user creation)
-      const response = await fetch('http://localhost:5001/api/send-verification', {
+      const response = await fetch(`${API_BASE_URL}/api/send-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

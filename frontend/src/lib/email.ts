@@ -1,5 +1,6 @@
 import { Invoice } from '@/types/invoice';
 import { Settings } from '@/types/settings';
+import { API_BASE_URL } from '@/lib/config';
 
 export const sendEmail = async (
   invoice: Invoice,
@@ -19,7 +20,7 @@ export const sendEmail = async (
     const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
     formData.append('attachment', pdfBlob, `invoice-${invoice.invoice_number}.pdf`);
 
-    const response = await fetch('http://localhost:5000/api/send-email', {
+    const response = await fetch(`${API_BASE_URL}/api/send-email`, {
       method: 'POST',
       body: formData,
     });

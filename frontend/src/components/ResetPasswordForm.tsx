@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/config';
 
 interface ResetPasswordFormProps {
   token: string;
@@ -30,7 +31,7 @@ const ResetPasswordForm = ({ token }: ResetPasswordFormProps) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/reset-password', {
+      const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

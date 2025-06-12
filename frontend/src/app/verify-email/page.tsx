@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/config';
 
 export default function VerifyEmail() {
   const [status, setStatus] = useState('Verifying...');
@@ -16,7 +17,7 @@ export default function VerifyEmail() {
         return;
       }
 
-      const response = await fetch('http://localhost:5001/api/verify-email', {
+      const response = await fetch(`${API_BASE_URL}/api/verify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
