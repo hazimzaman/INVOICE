@@ -39,7 +39,7 @@ export default function ForgotPassword() {
               `${window.location.origin}/update-password`
             )
           }
-        }
+        } as any
       );
 
       if (error) {

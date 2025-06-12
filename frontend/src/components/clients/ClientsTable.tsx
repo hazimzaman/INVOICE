@@ -11,11 +11,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientsTableProps {
   onAddClick: () => void;
-  onEdit: (client: Client) => void;
-  onDelete: (id: string) => void;
 }
 
-export default function ClientsTable({ onAddClick, onEdit, onDelete }: ClientsTableProps) {
+export default function ClientsTable({ onAddClick }: ClientsTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);

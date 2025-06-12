@@ -6,6 +6,7 @@ import RootLayoutClient from "@/components/RootLayoutClient";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { openSans, montserrat } from '@/utils/fonts';
 import Footer from '@/components/common/Footer';
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,14 +32,16 @@ export default function RootLayout({
     <html lang="en" className={`${openSans.variable} ${montserrat.variable} h-full`}>
       <body className="flex flex-col min-h-screen">
         <Providers>
-          <LoadingProvider>
-            <RootLayoutClient geistSans={geistSans} geistMono={geistMono}>
-              <div className="flex flex-col min-h-screen">
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-            </RootLayoutClient>
-          </LoadingProvider>
+          <Suspense fallback={null}>
+            <LoadingProvider>
+              <RootLayoutClient geistSans={geistSans} geistMono={geistMono}>
+                <div className="flex flex-col min-h-screen">
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
+              </RootLayoutClient>
+            </LoadingProvider>
+          </Suspense>
         </Providers>
       </body>
     </html>
